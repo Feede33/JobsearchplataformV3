@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Search,
   MapPin,
@@ -6,6 +6,7 @@ import {
   DollarSign,
   Filter,
   User,
+  LogOut,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -18,16 +19,52 @@ import {
 } from "./ui/select";
 import { Slider } from "./ui/slider";
 import { Card, CardContent } from "./ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import JobListingCard from "./JobListingCard";
+import SearchSuggestions from "./SearchSuggestions";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [location, setLocation] = useState("");
   const [employmentType, setEmploymentType] = useState("");
   const [salaryRange, setSalaryRange] = useState([30000]);
   const [showFilters, setShowFilters] = useState(false);
+  const [showJobSuggestions, setShowJobSuggestions] = useState(false);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+
+  const jobInputRef = useRef<HTMLInputElement>(null);
+  const locationInputRef = useRef<HTMLInputElement>(null);
+  const jobSuggestionsRef = useRef<HTMLDivElement>(null);
+  const locationSuggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Handle clicks outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        jobSuggestionsRef.current &&
+        !jobSuggestionsRef.current.contains(event.target as Node) &&
+        !jobInputRef.current?.contains(event.target as Node)
+      ) {
+        setShowJobSuggestions(false);
+      }
+      if (
+        locationSuggestionsRef.current &&
+        !locationSuggestionsRef.current.contains(event.target as Node) &&
+        !locationInputRef.current?.contains(event.target as Node)
+      ) {
+        setShowLocationSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Mock job data for demonstration
   const mockJobs = [
@@ -101,6 +138,8 @@ const HomePage = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowJobSuggestions(false);
+    setShowLocationSuggestions(false);
     // In a real app, this would trigger an API call with the search parameters
     console.log("Searching for:", {
       searchTerm,
@@ -108,6 +147,21 @@ const HomePage = () => {
       employmentType,
       salaryRange,
     });
+  };
+
+  const handleJobSuggestionSelect = (suggestion: string) => {
+    setSearchTerm(suggestion);
+    setShowJobSuggestions(false);
+  };
+
+  const handleLocationSuggestionSelect = (suggestion: string) => {
+    setLocation(suggestion);
+    setShowLocationSuggestions(false);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
   };
 
   return (
@@ -144,19 +198,44 @@ const HomePage = () => {
             </nav>
           </div>
           <div className="flex items-center space-x-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate("/profile")}
-              className="flex items-center gap-2"
-            >
-              <User className="h-4 w-4" />
-              Profile
-            </Button>
-            <Button variant="outline" size="sm">
-              Sign In
-            </Button>
-            <Button size="sm">Post a Job</Button>
+            {isAuthenticated ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/profile")}
+                  className="flex items-center gap-2"
+                >
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage src={user?.avatar} alt={user?.name} />
+                    <AvatarFallback>
+                      {user?.name?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {user?.name}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="flex items-center gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/auth")}
+                >
+                  Sign In
+                </Button>
+                <Button size="sm">Post a Job</Button>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -169,24 +248,44 @@ const HomePage = () => {
 
           <form onSubmit={handleSearch} className="max-w-4xl mx-auto">
             <div className="flex flex-col md:flex-row gap-4 mb-4 p-6 bg-white rounded-lg shadow-lg border">
-              <div className="relative flex-1">
+              <div className="relative flex-1" ref={jobSuggestionsRef}>
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
+                  ref={jobInputRef}
                   placeholder="Job title, keywords, or company"
                   className="pl-10 h-12 text-base"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setShowJobSuggestions(true)}
+                  onMouseEnter={() => setShowJobSuggestions(true)}
                 />
+                {showJobSuggestions && (
+                  <SearchSuggestions
+                    type="job"
+                    searchTerm={searchTerm}
+                    onSelect={handleJobSuggestionSelect}
+                  />
+                )}
               </div>
 
-              <div className="relative flex-1">
+              <div className="relative flex-1" ref={locationSuggestionsRef}>
                 <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
+                  ref={locationInputRef}
                   placeholder="City, state, or remote"
-                  className="pl-10 h-12 text-base md:w-auto w-full bg-[#f5f0f0]"
+                  className="pl-10 h-12 text-base md:w-auto w-full"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
+                  onFocus={() => setShowLocationSuggestions(true)}
+                  onMouseEnter={() => setShowLocationSuggestions(true)}
                 />
+                {showLocationSuggestions && (
+                  <SearchSuggestions
+                    type="location"
+                    searchTerm={location}
+                    onSelect={handleLocationSuggestionSelect}
+                  />
+                )}
               </div>
 
               <Button

@@ -18,7 +18,10 @@ import {
   BookmarkIcon,
   TrashIcon,
   ExternalLinkIcon,
+  ArrowLeft,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 interface Application {
   id: string;
@@ -111,6 +114,8 @@ const UserProfileSection = ({
     },
   ],
 }: UserProfileSectionProps) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeApplications, setActiveApplications] =
     useState<Application[]>(applications);
   const [activeSavedJobs, setActiveSavedJobs] = useState<SavedJob[]>(savedJobs);
@@ -141,230 +146,258 @@ const UserProfileSection = ({
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-6 bg-white rounded-lg shadow-sm">
-      <div className="flex flex-col md:flex-row gap-6 mb-8">
-        <div className="flex-shrink-0">
-          <Avatar className="h-24 w-24">
-            <AvatarImage
-              src="https://api.dicebear.com/7.x/avataaars/svg?seed=userprofile"
-              alt="User Profile"
-            />
-            <AvatarFallback>JP</AvatarFallback>
-          </Avatar>
-        </div>
-        <div className="flex-grow">
-          <h1 className="text-2xl font-bold">John Peterson</h1>
-          <p className="text-gray-600">Frontend Developer</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Badge variant="outline">React</Badge>
-            <Badge variant="outline">TypeScript</Badge>
-            <Badge variant="outline">UI/UX</Badge>
-            <Badge variant="outline">Tailwind CSS</Badge>
-          </div>
-          <div className="mt-4">
-            <Button variant="outline" size="sm" className="mr-2">
-              Edit Profile
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b bg-white">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/")}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Jobs
             </Button>
-            <Button variant="outline" size="sm">
-              Upload Resume
-            </Button>
+            <h1 className="text-2xl font-bold text-primary">My Profile</h1>
           </div>
         </div>
-      </div>
+      </header>
 
-      <Separator className="my-6" />
+      <div className="w-full max-w-6xl mx-auto p-6">
+        <div className="flex flex-col md:flex-row gap-6 mb-8 bg-white rounded-lg shadow-sm p-6">
+          <div className="flex-shrink-0">
+            <Avatar className="h-24 w-24">
+              <AvatarImage src={user?.avatar} alt={user?.name} />
+              <AvatarFallback>
+                {user?.name?.charAt(0).toUpperCase() || "U"}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+          <div className="flex-grow">
+            <h1 className="text-2xl font-bold">{user?.name || "User"}</h1>
+            <p className="text-gray-600">{user?.email}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {user?.skills?.map((skill, index) => (
+                <Badge key={index} variant="outline">
+                  {skill}
+                </Badge>
+              )) || (
+                <>
+                  <Badge variant="outline">React</Badge>
+                  <Badge variant="outline">TypeScript</Badge>
+                  <Badge variant="outline">JavaScript</Badge>
+                  <Badge variant="outline">Node.js</Badge>
+                </>
+              )}
+            </div>
+            <div className="mt-4">
+              <Button variant="outline" size="sm" className="mr-2">
+                Edit Profile
+              </Button>
+              <Button variant="outline" size="sm">
+                Upload Resume
+              </Button>
+            </div>
+          </div>
+        </div>
 
-      <Tabs defaultValue="applications" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-8">
-          <TabsTrigger value="applications" className="text-base">
-            <BriefcaseIcon className="mr-2 h-4 w-4" />
-            Applications
-          </TabsTrigger>
-          <TabsTrigger value="saved" className="text-base">
-            <BookmarkIcon className="mr-2 h-4 w-4" />
-            Saved Jobs
-          </TabsTrigger>
-        </TabsList>
+        <Tabs
+          defaultValue="applications"
+          className="w-full bg-white rounded-lg shadow-sm"
+        >
+          <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsTrigger value="applications" className="text-base">
+              <BriefcaseIcon className="mr-2 h-4 w-4" />
+              Applications
+            </TabsTrigger>
+            <TabsTrigger value="saved" className="text-base">
+              <BookmarkIcon className="mr-2 h-4 w-4" />
+              Saved Jobs
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="applications" className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
-            {activeApplications.length > 0 ? (
-              activeApplications.map((application) => (
-                <Card key={application.id} className="overflow-hidden">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <div className="flex items-center space-x-4">
-                      <Avatar>
-                        <AvatarImage
-                          src={application.companyLogo}
-                          alt={application.companyName}
-                        />
-                        <AvatarFallback>
-                          {application.companyName.substring(0, 2)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <CardTitle className="text-xl">
-                          {application.jobTitle}
-                        </CardTitle>
-                        <CardDescription>
-                          {application.companyName}
-                        </CardDescription>
+          <TabsContent value="applications" className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              {activeApplications.length > 0 ? (
+                activeApplications.map((application) => (
+                  <Card key={application.id} className="overflow-hidden">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                      <div className="flex items-center space-x-4">
+                        <Avatar>
+                          <AvatarImage
+                            src={application.companyLogo}
+                            alt={application.companyName}
+                          />
+                          <AvatarFallback>
+                            {application.companyName.substring(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <CardTitle className="text-xl">
+                            {application.jobTitle}
+                          </CardTitle>
+                          <CardDescription>
+                            {application.companyName}
+                          </CardDescription>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(application.status)}`}
+                      <div className="flex items-center">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(application.status)}`}
+                        >
+                          {application.status.charAt(0).toUpperCase() +
+                            application.status.slice(1)}
+                        </span>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center text-sm text-gray-500">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        Applied on{" "}
+                        {new Date(application.appliedDate).toLocaleDateString()}
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-between">
+                      <Button variant="outline" size="sm">
+                        View Details
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeApplication(application.id)}
                       >
-                        {application.status.charAt(0).toUpperCase() +
-                          application.status.slice(1)}
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      Applied on{" "}
-                      {new Date(application.appliedDate).toLocaleDateString()}
-                    </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-between">
-                    <Button variant="outline" size="sm">
-                      View Details
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeApplication(application.id)}
-                    >
-                      <TrashIcon className="h-4 w-4 mr-1" /> Remove
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))
-            ) : (
-              <div className="text-center py-12 bg-gray-50 rounded-lg">
-                <BriefcaseIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-lg font-medium text-gray-900">
-                  No applications yet
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Start applying to jobs to track your applications here.
-                </p>
-                <div className="mt-6">
-                  <Button>Browse Jobs</Button>
+                        <TrashIcon className="h-4 w-4 mr-1" /> Remove
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <BriefcaseIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-lg font-medium text-gray-900">
+                    No applications yet
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Start applying to jobs to track your applications here.
+                  </p>
+                  <div className="mt-6">
+                    <Button>Browse Jobs</Button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        </TabsContent>
+              )}
+            </div>
+          </TabsContent>
 
-        <TabsContent value="saved" className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
-            {activeSavedJobs.length > 0 ? (
-              activeSavedJobs.map((job) => (
-                <Card key={job.id} className="overflow-hidden">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <div className="flex items-center space-x-4">
-                      <Avatar>
-                        <AvatarImage
-                          src={job.companyLogo}
-                          alt={job.companyName}
-                        />
-                        <AvatarFallback>
-                          {job.companyName.substring(0, 2)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <CardTitle className="text-xl">
-                          {job.jobTitle}
-                        </CardTitle>
-                        <CardDescription>{job.companyName}</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                      <div className="flex items-center text-gray-500">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 mr-1"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+          <TabsContent value="saved" className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              {activeSavedJobs.length > 0 ? (
+                activeSavedJobs.map((job) => (
+                  <Card key={job.id} className="overflow-hidden">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                      <div className="flex items-center space-x-4">
+                        <Avatar>
+                          <AvatarImage
+                            src={job.companyLogo}
+                            alt={job.companyName}
                           />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                        </svg>
-                        {job.location}
+                          <AvatarFallback>
+                            {job.companyName.substring(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <CardTitle className="text-xl">
+                            {job.jobTitle}
+                          </CardTitle>
+                          <CardDescription>{job.companyName}</CardDescription>
+                        </div>
                       </div>
-                      <div className="flex items-center text-gray-500">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 mr-1"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                        {job.salary}
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                        <div className="flex items-center text-gray-500">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 mr-1"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                          </svg>
+                          {job.location}
+                        </div>
+                        <div className="flex items-center text-gray-500">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 mr-1"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          {job.salary}
+                        </div>
+                        <div className="flex items-center text-gray-500">
+                          <BriefcaseIcon className="h-4 w-4 mr-1" />
+                          {job.employmentType}
+                        </div>
                       </div>
-                      <div className="flex items-center text-gray-500">
-                        <BriefcaseIcon className="h-4 w-4 mr-1" />
-                        {job.employmentType}
+                      <div className="mt-2 flex items-center text-sm text-gray-500">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        Saved on {new Date(job.savedDate).toLocaleDateString()}
                       </div>
-                    </div>
-                    <div className="mt-2 flex items-center text-sm text-gray-500">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      Saved on {new Date(job.savedDate).toLocaleDateString()}
-                    </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-between">
-                    <Button className="flex items-center">
-                      Apply Now <ExternalLinkIcon className="ml-1 h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeSavedJob(job.id)}
-                    >
-                      <TrashIcon className="h-4 w-4 mr-1" /> Remove
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))
-            ) : (
-              <div className="text-center py-12 bg-gray-50 rounded-lg">
-                <BookmarkIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-lg font-medium text-gray-900">
-                  No saved jobs
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Save jobs you're interested in to apply later.
-                </p>
-                <div className="mt-6">
-                  <Button>Browse Jobs</Button>
+                    </CardContent>
+                    <CardFooter className="flex justify-between">
+                      <Button className="flex items-center">
+                        Apply Now <ExternalLinkIcon className="ml-1 h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeSavedJob(job.id)}
+                      >
+                        <TrashIcon className="h-4 w-4 mr-1" /> Remove
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <BookmarkIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-lg font-medium text-gray-900">
+                    No saved jobs
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Save jobs you're interested in to apply later.
+                  </p>
+                  <div className="mt-6">
+                    <Button>Browse Jobs</Button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };
