@@ -5,6 +5,7 @@ import JobDetailView from "./components/JobDetailView";
 import ApplicationForm from "./components/ApplicationForm";
 import UserProfileSection from "./components/UserProfileSection";
 import AuthForm from "./components/AuthForm";
+import SearchResultsPage from "./components/SearchResultsPage";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import routes from "tempo-routes";
 
@@ -23,6 +24,8 @@ function AppRoutes() {
           <Route path="/auth" element={<AuthForm />} />
           <Route path="/job/:id" element={<JobDetailView />} />
           <Route path="/apply/:id" element={<ApplicationForm />} />
+          <Route path="/search-results" element={<SearchResultsPage />} />
+          <Route path="/search" element={<SearchResultsPage />} />
           <Route
             path="/profile"
             element={

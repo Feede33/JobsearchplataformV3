@@ -73,7 +73,7 @@ const HomePage = () => {
       title: "Frontend Developer",
       company: "TechCorp",
       logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=TechCorp",
-      location: "San Francisco, CA",
+      location: "Montevideo",
       salary: "$80,000 - $120,000",
       type: "Full-time",
       requirements: ["React", "TypeScript", "3+ years experience"],
@@ -95,7 +95,7 @@ const HomePage = () => {
       title: "Backend Engineer",
       company: "DataSystems",
       logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=DataSystems",
-      location: "New York, NY",
+      location: "Canelones",
       salary: "$100,000 - $140,000",
       type: "Full-time",
       requirements: ["Node.js", "PostgreSQL", "AWS"],
@@ -106,7 +106,7 @@ const HomePage = () => {
       title: "Product Manager",
       company: "InnovateCo",
       logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=InnovateCo",
-      location: "Chicago, IL",
+      location: "Maldonado",
       salary: "$90,000 - $130,000",
       type: "Full-time",
       requirements: ["Agile", "Roadmapping", "5+ years experience"],
@@ -117,7 +117,7 @@ const HomePage = () => {
       title: "DevOps Engineer",
       company: "CloudTech",
       logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=CloudTech",
-      location: "Seattle, WA",
+      location: "Colonia",
       salary: "$110,000 - $150,000",
       type: "Full-time",
       requirements: ["Kubernetes", "Docker", "CI/CD"],
@@ -128,7 +128,7 @@ const HomePage = () => {
       title: "Data Scientist",
       company: "AnalyticsPro",
       logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=AnalyticsPro",
-      location: "Boston, MA",
+      location: "Montevideo",
       salary: "$95,000 - $135,000",
       type: "Part-time",
       requirements: ["Python", "Machine Learning", "SQL"],
@@ -140,12 +140,15 @@ const HomePage = () => {
     e.preventDefault();
     setShowJobSuggestions(false);
     setShowLocationSuggestions(false);
-    // In a real app, this would trigger an API call with the search parameters
-    console.log("Searching for:", {
-      searchTerm,
-      location,
-      employmentType,
-      salaryRange,
+    
+    // Navegar a la página de resultados de búsqueda con los parámetros de búsqueda
+    navigate('/search-results', { 
+      state: { 
+        searchTerm, 
+        location, 
+        employmentType: employmentType || "all", 
+        salaryMin: salaryRange[0] 
+      } 
     });
   };
 
@@ -272,8 +275,8 @@ const HomePage = () => {
                 <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   ref={locationInputRef}
-                  placeholder="City, state, or remote"
-                  className="pl-10 h-12 text-base md:w-auto w-full"
+                  placeholder="Ciudad o departamento"
+                  className="pl-10 h-12 text-base w-full"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   onFocus={() => setShowLocationSuggestions(true)}
