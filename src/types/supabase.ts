@@ -1,115 +1,84 @@
-export type Database = {
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export interface Database {
   public: {
     Tables: {
-      jobs: {
+      logs: {
         Row: {
-          id: string
-          title: string
-          company: string
-          location: string
-          description: string
-          salary: string | null
-          requirements: string | null
-          created_at: string
-          updated_at: string
-        }
+          id: number;
+          user_id: string | null;
+          event_type: string;
+          details: Json | null;
+          created_at: string;
+        };
         Insert: {
-          id?: string
-          title: string
-          company: string
-          location: string
-          description: string
-          salary?: string | null
-          requirements?: string | null
-          created_at?: string
-          updated_at?: string
-        }
+          id?: number;
+          user_id?: string | null;
+          event_type: string;
+          details?: Json | null;
+          created_at?: string;
+        };
         Update: {
-          id?: string
-          title?: string
-          company?: string
-          location?: string
-          description?: string
-          salary?: string | null
-          requirements?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      applications: {
+          id?: number;
+          user_id?: string | null;
+          event_type?: string;
+          details?: Json | null;
+          created_at?: string;
+        };
+      };
+      saved_jobs: {
         Row: {
-          id: string
-          job_id: string
-          user_id: string
-          resume_url: string | null
-          cover_letter: string | null
-          status: string
-          created_at: string
-          updated_at: string
-        }
+          id: number;
+          user_id: string;
+          job_id: string;
+          job_data: Json;
+          created_at: string;
+        };
         Insert: {
-          id?: string
-          job_id: string
-          user_id: string
-          resume_url?: string | null
-          cover_letter?: string | null
-          status?: string
-          created_at?: string
-          updated_at?: string
-        }
+          id?: number;
+          user_id: string;
+          job_id: string;
+          job_data: Json;
+          created_at?: string;
+        };
         Update: {
-          id?: string
-          job_id?: string
-          user_id?: string
-          resume_url?: string | null
-          cover_letter?: string | null
-          status?: string
-          created_at?: string
-          updated_at?: string
-        }
-      }
+          id?: number;
+          user_id?: string;
+          job_id?: string;
+          job_data?: Json;
+          created_at?: string;
+        };
+      };
       profiles: {
         Row: {
-          id: string
-          user_id: string
-          full_name: string
-          email: string
-          bio: string | null
-          avatar_url: string | null
-          created_at: string
-          updated_at: string
-        }
+          id: string;
+          email: string | null;
+          name: string | null;
+          avatar_url: string | null;
+          updated_at: string | null;
+        };
         Insert: {
-          id?: string
-          user_id: string
-          full_name: string
-          email: string
-          bio?: string | null
-          avatar_url?: string | null
-          created_at?: string
-          updated_at?: string
-        }
+          id: string;
+          email?: string | null;
+          name?: string | null;
+          avatar_url?: string | null;
+          updated_at?: string | null;
+        };
         Update: {
-          id?: string
-          user_id?: string
-          full_name?: string
-          email?: string
-          bio?: string | null
-          avatar_url?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      [_ in never]: never
-    }
-    Enums: {
-      [_ in never]: never
-    }
-  }
+          id?: string;
+          email?: string | null;
+          name?: string | null;
+          avatar_url?: string | null;
+          updated_at?: string | null;
+        };
+      };
+    };
+  };
 }
 

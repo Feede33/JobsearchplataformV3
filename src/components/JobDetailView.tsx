@@ -30,6 +30,7 @@ import {
   ShareIcon,
 } from "lucide-react";
 import jobDetails from "@/data/jobDetails";
+import { useSavedJobs } from "@/contexts/SavedJobsContext";
 
 interface JobDetailProps {
   jobId?: string;
@@ -117,9 +118,11 @@ const JobDetailView: React.FC<JobDetailProps> = ({
   const urlJobId = params.id;
   
   const [showApplicationForm, setShowApplicationForm] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
   const [job, setJob] = useState<any>(null);
-
+  
+  // Usar el contexto de trabajos guardados
+  const { saveJob, removeJob, isSaved } = useSavedJobs();
+  
   useEffect(() => {
     // Usar el ID de la URL o el proporcionado como prop
     const currentJobId = urlJobId || jobId || "1";
@@ -135,8 +138,25 @@ const JobDetailView: React.FC<JobDetailProps> = ({
   }, [jobId, urlJobId]);
 
   const handleSaveJob = () => {
-    setIsSaved(!isSaved);
-    onSave(job?.id);
+    if (!job) return;
+    
+    if (!isSaved(job.id)) {
+      // Guardar el trabajo
+      saveJob({
+        id: job.id,
+        jobTitle: job.title,
+        companyName: job.company,
+        companyLogo: job.companyLogo,
+        location: job.location,
+        salary: job.salary,
+        employmentType: job.employmentType,
+      });
+    } else {
+      // Remover el trabajo si ya estaba guardado
+      removeJob(job.id);
+    }
+    
+    onSave(job.id);
   };
 
   const handleApplyClick = () => {
@@ -184,7 +204,7 @@ const JobDetailView: React.FC<JobDetailProps> = ({
                 variant="outline"
                 size="icon"
                 onClick={handleSaveJob}
-                className={isSaved ? "text-primary bg-primary/10" : ""}
+                className={isSaved(job.id) ? "text-primary bg-primary/10" : ""}
               >
                 <BookmarkIcon className="h-5 w-5" />
               </Button>
@@ -275,24 +295,12 @@ const JobDetailView: React.FC<JobDetailProps> = ({
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-between pt-4 border-t">
-          <div className="text-sm text-muted-foreground flex items-center">
-            <ClockIcon className="h-4 w-4 mr-1" />
-            <span>
-              Apply before{" "}
-              {formatDate(
-                new Date(
-                  new Date(job.postedDate).setMonth(
-                    new Date(job.postedDate).getMonth() + 1,
-                  ),
-                ).toISOString(),
-              )}
-            </span>
-          </div>
+        <CardFooter className="flex flex-col gap-4">
+          <Separator />
 
           <div className="flex gap-3">
             <Button variant="outline" onClick={handleSaveJob}>
-              {isSaved ? "Saved" : "Save Job"}
+              {isSaved(job.id) ? "Guardado" : "Guardar Empleo"}
             </Button>
 
             <Dialog
@@ -300,7 +308,7 @@ const JobDetailView: React.FC<JobDetailProps> = ({
               onOpenChange={setShowApplicationForm}
             >
               <DialogTrigger asChild>
-                <Button onClick={handleApplyClick}>Apply Now</Button>
+                <Button onClick={handleApplyClick}>Aplicar Ahora</Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>

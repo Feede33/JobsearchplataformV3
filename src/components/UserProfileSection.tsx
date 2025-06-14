@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useSavedJobs } from "@/contexts/SavedJobsContext";
 
 interface Application {
   id: string;
@@ -32,20 +33,8 @@ interface Application {
   status: "pending" | "reviewed" | "interview" | "rejected" | "accepted";
 }
 
-interface SavedJob {
-  id: string;
-  jobTitle: string;
-  companyName: string;
-  companyLogo: string;
-  location: string;
-  salary: string;
-  employmentType: string;
-  savedDate: string;
-}
-
 interface UserProfileSectionProps {
   applications?: Application[];
-  savedJobs?: SavedJob[];
 }
 
 const UserProfileSection = ({
@@ -78,54 +67,16 @@ const UserProfileSection = ({
       status: "rejected",
     },
   ],
-  savedJobs = [
-    {
-      id: "1",
-      jobTitle: "Senior React Developer",
-      companyName: "InnovateTech",
-      companyLogo:
-        "https://api.dicebear.com/7.x/avataaars/svg?seed=innovatetech",
-      location: "San Francisco, CA",
-      salary: "$120,000 - $150,000",
-      employmentType: "Full-time",
-      savedDate: "2023-05-12",
-    },
-    {
-      id: "2",
-      jobTitle: "Product Manager",
-      companyName: "Growth Startup",
-      companyLogo:
-        "https://api.dicebear.com/7.x/avataaars/svg?seed=growthstartup",
-      location: "Remote",
-      salary: "$110,000 - $130,000",
-      employmentType: "Full-time",
-      savedDate: "2023-05-08",
-    },
-    {
-      id: "3",
-      jobTitle: "DevOps Engineer",
-      companyName: "Cloud Systems",
-      companyLogo:
-        "https://api.dicebear.com/7.x/avataaars/svg?seed=cloudsystems",
-      location: "Austin, TX",
-      salary: "$130,000 - $160,000",
-      employmentType: "Full-time",
-      savedDate: "2023-05-03",
-    },
-  ],
 }: UserProfileSectionProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeApplications, setActiveApplications] =
     useState<Application[]>(applications);
-  const [activeSavedJobs, setActiveSavedJobs] = useState<SavedJob[]>(savedJobs);
+  
+  const { savedJobs, removeJob } = useSavedJobs();
 
   const removeApplication = (id: string) => {
     setActiveApplications(activeApplications.filter((app) => app.id !== id));
-  };
-
-  const removeSavedJob = (id: string) => {
-    setActiveSavedJobs(activeSavedJobs.filter((job) => job.id !== id));
   };
 
   const getStatusColor = (status: string) => {
@@ -243,25 +194,23 @@ const UserProfileSection = ({
                           </CardDescription>
                         </div>
                       </div>
-                      <div className="flex items-center">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(application.status)}`}
-                        >
-                          {application.status.charAt(0).toUpperCase() +
-                            application.status.slice(1)}
-                        </span>
-                      </div>
+                      <Badge className={getStatusColor(application.status)}>
+                        {application.status.charAt(0).toUpperCase() +
+                          application.status.slice(1)}
+                      </Badge>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pb-2">
                       <div className="flex items-center text-sm text-gray-500">
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         Applied on{" "}
-                        {new Date(application.appliedDate).toLocaleDateString()}
+                        {new Date(
+                          application.appliedDate,
+                        ).toLocaleDateString()}
                       </div>
                     </CardContent>
-                    <CardFooter className="flex justify-between">
+                    <CardFooter className="flex justify-between pt-0">
                       <Button variant="outline" size="sm">
-                        View Details
+                        View Job
                       </Button>
                       <Button
                         variant="ghost"
@@ -280,7 +229,7 @@ const UserProfileSection = ({
                     No applications yet
                   </h3>
                   <p className="mt-1 text-sm text-gray-500">
-                    Start applying to jobs to track your applications here.
+                    Start applying for jobs and track your applications here.
                   </p>
                   <div className="mt-6">
                     <Button>Browse Jobs</Button>
@@ -292,8 +241,8 @@ const UserProfileSection = ({
 
           <TabsContent value="saved" className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
-              {activeSavedJobs.length > 0 ? (
-                activeSavedJobs.map((job) => (
+              {savedJobs.length > 0 ? (
+                savedJobs.map((job) => (
                   <Card key={job.id} className="overflow-hidden">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                       <div className="flex items-center space-x-4">
@@ -314,8 +263,8 @@ const UserProfileSection = ({
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                    <CardContent className="pb-2">
+                      <div className="flex flex-wrap gap-4 text-sm mb-2">
                         <div className="flex items-center text-gray-500">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -367,15 +316,18 @@ const UserProfileSection = ({
                       </div>
                     </CardContent>
                     <CardFooter className="flex justify-between">
-                      <Button className="flex items-center">
-                        Apply Now <ExternalLinkIcon className="ml-1 h-4 w-4" />
+                      <Button 
+                        className="flex items-center"
+                        onClick={() => navigate(`/job/${job.id}`)}
+                      >
+                        Ver Detalles <ExternalLinkIcon className="ml-1 h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeSavedJob(job.id)}
+                        onClick={() => removeJob(job.id)}
                       >
-                        <TrashIcon className="h-4 w-4 mr-1" /> Remove
+                        <TrashIcon className="h-4 w-4 mr-1" /> Eliminar
                       </Button>
                     </CardFooter>
                   </Card>
@@ -384,13 +336,13 @@ const UserProfileSection = ({
                 <div className="text-center py-12 bg-gray-50 rounded-lg">
                   <BookmarkIcon className="mx-auto h-12 w-12 text-gray-400" />
                   <h3 className="mt-2 text-lg font-medium text-gray-900">
-                    No saved jobs
+                    No hay trabajos guardados
                   </h3>
                   <p className="mt-1 text-sm text-gray-500">
-                    Save jobs you're interested in to apply later.
+                    Guarda empleos que te interesen para aplicar más tarde.
                   </p>
                   <div className="mt-6">
-                    <Button>Browse Jobs</Button>
+                    <Button onClick={() => navigate("/")}>Explorar Empleos</Button>
                   </div>
                 </div>
               )}

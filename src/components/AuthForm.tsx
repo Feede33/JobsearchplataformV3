@@ -19,7 +19,7 @@ interface AuthFormProps {
 }
 
 const AuthForm = ({ onClose }: AuthFormProps) => {
-  const { login, signup } = useAuth();
+  const { login, signup, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -45,15 +45,15 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
     setError("");
 
     try {
-      const success = await login(loginData.email, loginData.password);
-      if (success) {
+      const result = await login(loginData.email, loginData.password);
+      if (result.success) {
         onClose?.();
         navigate("/");
       } else {
-        setError("Invalid credentials");
+        setError(result.error || "Credenciales inválidas");
       }
-    } catch (err) {
-      setError("Login failed");
+    } catch (err: any) {
+      setError(err.message || "Error en el inicio de sesión");
     } finally {
       setIsLoading(false);
     }
@@ -65,25 +65,25 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
     setError("");
 
     if (signupData.password !== signupData.confirmPassword) {
-      setError("Passwords do not match");
+      setError("Las contraseñas no coinciden");
       setIsLoading(false);
       return;
     }
 
     try {
-      const success = await signup(
-        signupData.name,
+      const result = await signup(
         signupData.email,
         signupData.password,
+        signupData.name,
       );
-      if (success) {
+      if (result.success) {
         onClose?.();
         navigate("/");
       } else {
-        setError("Signup failed");
+        setError(result.error || "No se pudo crear la cuenta");
       }
-    } catch (err) {
-      setError("Signup failed");
+    } catch (err: any) {
+      setError(err.message || "Error al crear la cuenta");
     } finally {
       setIsLoading(false);
     }
@@ -94,17 +94,17 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">
-            Welcome to JobSearch
+            Bienvenido a JobSearch
           </CardTitle>
           <CardDescription>
-            Sign in to your account or create a new one
+            Inicia sesión o crea una nueva cuenta
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsTrigger value="login">Iniciar sesión</TabsTrigger>
+              <TabsTrigger value="signup">Registrarse</TabsTrigger>
             </TabsList>
 
             <TabsContent value="login">
@@ -114,7 +114,7 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
                   <Input
                     id="login-email"
                     type="email"
-                    placeholder="Enter your email"
+                    placeholder="Ingresa tu email"
                     value={loginData.email}
                     onChange={(e) =>
                       setLoginData({ ...loginData, email: e.target.value })
@@ -123,12 +123,12 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
+                  <Label htmlFor="login-password">Contraseña</Label>
                   <div className="relative">
                     <Input
                       id="login-password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
+                      placeholder="Ingresa tu contraseña"
                       value={loginData.password}
                       onChange={(e) =>
                         setLoginData({ ...loginData, password: e.target.value })
@@ -155,8 +155,8 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
                     {error}
                   </div>
                 )}
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Signing in..." : "Sign In"}
+                <Button type="submit" className="w-full" disabled={isLoading || authLoading}>
+                  {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
                 </Button>
               </form>
             </TabsContent>
@@ -164,11 +164,11 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-name">Full Name</Label>
+                  <Label htmlFor="signup-name">Nombre completo</Label>
                   <Input
                     id="signup-name"
                     type="text"
-                    placeholder="Enter your full name"
+                    placeholder="Ingresa tu nombre completo"
                     value={signupData.name}
                     onChange={(e) =>
                       setSignupData({ ...signupData, name: e.target.value })
@@ -181,7 +181,7 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
                   <Input
                     id="signup-email"
                     type="email"
-                    placeholder="Enter your email"
+                    placeholder="Ingresa tu email"
                     value={signupData.email}
                     onChange={(e) =>
                       setSignupData({ ...signupData, email: e.target.value })
@@ -190,12 +190,12 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
+                  <Label htmlFor="signup-password">Contraseña</Label>
                   <div className="relative">
                     <Input
                       id="signup-password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Create a password"
+                      placeholder="Crea una contraseña"
                       value={signupData.password}
                       onChange={(e) =>
                         setSignupData({
@@ -222,12 +222,12 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-confirm-password">
-                    Confirm Password
+                    Confirmar contraseña
                   </Label>
                   <Input
                     id="signup-confirm-password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Confirm your password"
+                    placeholder="Confirma tu contraseña"
                     value={signupData.confirmPassword}
                     onChange={(e) =>
                       setSignupData({
@@ -243,8 +243,8 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
                     {error}
                   </div>
                 )}
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Creating account..." : "Create Account"}
+                <Button type="submit" className="w-full" disabled={isLoading || authLoading}>
+                  {isLoading ? "Creando cuenta..." : "Crear cuenta"}
                 </Button>
               </form>
             </TabsContent>

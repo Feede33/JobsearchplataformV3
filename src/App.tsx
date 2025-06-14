@@ -7,6 +7,7 @@ import UserProfileSection from "./components/UserProfileSection";
 import AuthForm from "./components/AuthForm";
 import SearchResultsPage from "./components/SearchResultsPage";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { SavedJobsProvider } from "./contexts/SavedJobsContext";
 import routes from "tempo-routes";
 
 // Protected Route Component
@@ -44,7 +45,9 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <SavedJobsProvider>
+        <AppRoutes />
+      </SavedJobsProvider>
     </AuthProvider>
   );
 }
