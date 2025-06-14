@@ -2,8 +2,7 @@ import React from "react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Briefcase, DollarSign, Clock, Bookmark } from "lucide-react";
-import { useSavedJobs } from "@/contexts/SavedJobsContext";
+import { MapPin, Briefcase, DollarSign, Clock } from "lucide-react";
 
 interface JobListingCardProps {
   id?: string;
@@ -32,59 +31,24 @@ const JobListingCard = ({
   onClick = () => console.log("Job card clicked"),
   className = "",
 }: JobListingCardProps) => {
-  const { saveJob, removeJob, isSaved } = useSavedJobs();
-  const isJobSaved = isSaved(id);
-
-  const handleClick = (e: React.MouseEvent) => {
-    onClick();
-  };
-
-  const handleSaveJob = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Evitar que se propague al hacer clic en el card
-    
-    if (isJobSaved) {
-      removeJob(id);
-    } else {
-      saveJob({
-        id,
-        jobTitle,
-        companyName,
-        companyLogo,
-        location,
-        salary: salaryRange,
-        employmentType,
-      });
-    }
-  };
-
   return (
     <Card
       className={`w-full h-full min-h-[220px] overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer bg-white border-muted hover:border-primary/30 ${className}`}
-      onClick={handleClick}
+      onClick={onClick}
     >
       <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="h-11 w-11 rounded-md overflow-hidden flex-shrink-0 border">
-              <img
-                src={companyLogo}
-                alt={`${companyName} logo`}
-                className="h-full w-full object-cover"
-              />
-            </div>
-            <div className="overflow-hidden">
-              <h3 className="font-semibold text-base line-clamp-1">{jobTitle}</h3>
-              <p className="text-sm text-muted-foreground">{companyName}</p>
-            </div>
+        <div className="flex items-start gap-3">
+          <div className="h-11 w-11 rounded-md overflow-hidden flex-shrink-0 border">
+            <img
+              src={companyLogo}
+              alt={`${companyName} logo`}
+              className="h-full w-full object-cover"
+            />
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={`h-8 w-8 ${isJobSaved ? "text-primary bg-primary/10" : ""}`}
-            onClick={handleSaveJob}
-          >
-            <Bookmark className="h-4 w-4" />
-          </Button>
+          <div className="overflow-hidden">
+            <h3 className="font-semibold text-base line-clamp-1">{jobTitle}</h3>
+            <p className="text-sm text-muted-foreground">{companyName}</p>
+          </div>
         </div>
 
         <div className="mt-3 space-y-1.5">

@@ -1,164 +1,22 @@
-import React, { createContext, useState, useContext, useEffect } from "react";
-import { supabase, AuthUser, logEvent } from "@/lib/supabase";
-import { Session } from "@supabase/supabase-js";
+import React, { createContext, useContext, useState, useEffect } from "react";
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  skills?: string[];
+}
 
 interface AuthContextType {
+  user: User | null;
+  login: (email: string, password: string) => Promise<boolean>;
+  signup: (name: string, email: string, password: string) => Promise<boolean>;
+  logout: () => void;
   isAuthenticated: boolean;
-  user: AuthUser | null;
-  session: Session | null;
-  login: (email: string, password: string) => Promise<{
-    success: boolean;
-    error?: string;
-  }>;
-  signup: (email: string, password: string, name: string) => Promise<{
-    success: boolean;
-    error?: string;
-  }>;
-  logout: () => Promise<void>;
-  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  
-  useEffect(() => {
-    // Buscar sesión actual cuando el componente se monta
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ? {
-        id: session.user.id,
-        email: session.user.email,
-        name: session.user.user_metadata?.name,
-        avatar_url: session.user.user_metadata?.avatar_url
-      } : null);
-      setLoading(false);
-    });
-
-    // Configurar listener para cambios en auth
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ? {
-        id: session.user.id,
-        email: session.user.email,
-        name: session.user.user_metadata?.name,
-        avatar_url: session.user.user_metadata?.avatar_url
-      } : null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const login = async (email: string, password: string) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      // Registrar evento de login
-      await logEvent({
-        user_id: data.user?.id,
-        event_type: 'login',
-        details: { email }
-      });
-
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signup = async (email: string, password: string, name: string) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name,
-          },
-        },
-      });
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      // Crear el perfil del usuario
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            {
-              id: data.user.id,
-              email: data.user.email,
-              name: name,
-            },
-          ]);
-
-        if (profileError) {
-          console.error("Error creating profile:", profileError);
-        }
-      }
-
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const logout = async () => {
-    try {
-      setLoading(true);
-      
-      // Registrar evento de logout
-      if (user) {
-        await logEvent({
-          user_id: user.id,
-          event_type: 'logout'
-        });
-      }
-      
-      // Cerrar sesión
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error("Error during logout:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <AuthContext.Provider
-      value={{
-        isAuthenticated: !!user,
-        user,
-        session,
-        login,
-        signup,
-        logout,
-        loading,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -166,4 +24,77 @@ export const useAuth = () => {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
+};
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    // Check if user is logged in from localStorage
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      const userData = JSON.parse(savedUser);
+      setUser(userData);
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const login = async (email: string, password: string): Promise<boolean> => {
+    // Mock authentication - in real app, this would call an API
+    if (email && password) {
+      const userData: User = {
+        id: "1",
+        name: email.split("@")[0],
+        email: email,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+        skills: ["React", "TypeScript", "JavaScript", "Node.js"],
+      };
+
+      setUser(userData);
+      setIsAuthenticated(true);
+      localStorage.setItem("user", JSON.stringify(userData));
+      return true;
+    }
+    return false;
+  };
+
+  const signup = async (
+    name: string,
+    email: string,
+    password: string,
+  ): Promise<boolean> => {
+    // Mock signup - in real app, this would call an API
+    if (name && email && password) {
+      const userData: User = {
+        id: Date.now().toString(),
+        name: name,
+        email: email,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+        skills: [],
+      };
+
+      setUser(userData);
+      setIsAuthenticated(true);
+      localStorage.setItem("user", JSON.stringify(userData));
+      return true;
+    }
+    return false;
+  };
+
+  const logout = () => {
+    setUser(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem("user");
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{ user, login, signup, logout, isAuthenticated }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
