@@ -140,15 +140,15 @@ const HomePage = () => {
     e.preventDefault();
     setShowJobSuggestions(false);
     setShowLocationSuggestions(false);
-    
+
     // Navegar a la página de resultados de búsqueda con los parámetros de búsqueda
-    navigate('/search-results', { 
-      state: { 
-        searchTerm, 
-        location, 
-        employmentType: employmentType || "all", 
-        salaryMin: salaryRange[0] 
-      } 
+    navigate("/search-results", {
+      state: {
+        searchTerm: searchTerm.trim(),
+        location: location.trim(),
+        employmentType: employmentType || "all",
+        salaryMin: salaryRange[0],
+      },
     });
   };
 

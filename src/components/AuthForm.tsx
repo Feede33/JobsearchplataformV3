@@ -72,9 +72,9 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
 
     try {
       const result = await signup(
+        signupData.name,
         signupData.email,
         signupData.password,
-        signupData.name,
       );
       if (result.success) {
         onClose?.();

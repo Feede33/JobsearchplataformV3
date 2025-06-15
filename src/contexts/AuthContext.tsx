@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { User as SupabaseUser, AuthError } from "@supabase/supabase-js";
 
 interface User {
   id: string;
-  name: string;
+  name: string | null;
   email: string;
   avatar?: string;
   skills?: string[];
@@ -10,10 +12,11 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  signup: (name: string, email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,68 +34,134 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
 
+  // Convertir un usuario de Supabase a nuestro formato de usuario
+  const formatUser = (supabaseUser: SupabaseUser | null): User | null => {
+    if (!supabaseUser) return null;
+    
+    return {
+      id: supabaseUser.id,
+      name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || null,
+      email: supabaseUser.email || '',
+      avatar: supabaseUser.user_metadata?.avatar_url || 
+              `https://api.dicebear.com/7.x/avataaars/svg?seed=${supabaseUser.email}`,
+      skills: supabaseUser.user_metadata?.skills || [],
+    };
+  };
+
+  // Verificar sesión al cargar
   useEffect(() => {
-    // Check if user is logged in from localStorage
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      const userData = JSON.parse(savedUser);
-      setUser(userData);
-      setIsAuthenticated(true);
-    }
+    const checkSession = async () => {
+      setLoading(true);
+      
+      // Obtener la sesión actual
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error("Error al verificar sesión:", error);
+      }
+      
+      if (session?.user) {
+        setUser(formatUser(session.user));
+        setIsAuthenticated(true);
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+      
+      setLoading(false);
+    };
+
+    checkSession();
+
+    // Configurar suscripción a cambios de autenticación
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          setUser(formatUser(session.user));
+          setIsAuthenticated(true);
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+        setLoading(false);
+      }
+    );
+
+    // Limpiar suscripción al desmontar
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Mock authentication - in real app, this would call an API
-    if (email && password) {
-      const userData: User = {
-        id: "1",
-        name: email.split("@")[0],
-        email: email,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-        skills: ["React", "TypeScript", "JavaScript", "Node.js"],
-      };
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      setUser(userData);
-      setIsAuthenticated(true);
-      localStorage.setItem("user", JSON.stringify(userData));
-      return true;
+      if (error) {
+        console.error("Error en inicio de sesión:", error);
+        return { success: false, error: error.message };
+      }
+
+      if (data.user) {
+        return { success: true };
+      }
+
+      return { success: false, error: "No se pudo iniciar sesión" };
+    } catch (error) {
+      console.error("Error inesperado:", error);
+      return { success: false, error: "Error inesperado al iniciar sesión" };
     }
-    return false;
   };
 
   const signup = async (
     name: string,
     email: string,
     password: string,
-  ): Promise<boolean> => {
-    // Mock signup - in real app, this would call an API
-    if (name && email && password) {
-      const userData: User = {
-        id: Date.now().toString(),
-        name: name,
-        email: email,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-        skills: [],
-      };
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+            avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+          },
+        },
+      });
 
-      setUser(userData);
-      setIsAuthenticated(true);
-      localStorage.setItem("user", JSON.stringify(userData));
-      return true;
+      if (error) {
+        console.error("Error en registro:", error);
+        return { success: false, error: error.message };
+      }
+
+      if (data.user) {
+        // En entornos reales, Supabase puede requerir verificación de email
+        return { 
+          success: true, 
+          error: data.session ? undefined : "Se ha enviado un correo de confirmación. Por favor, verifica tu bandeja de entrada." 
+        };
+      }
+
+      return { success: false, error: "No se pudo completar el registro" };
+    } catch (error) {
+      console.error("Error inesperado:", error);
+      return { success: false, error: "Error inesperado al registrarse" };
     }
-    return false;
   };
 
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem("user");
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, login, signup, logout, isAuthenticated }}
+      value={{ user, login, signup, logout, isAuthenticated, loading }}
     >
       {children}
     </AuthContext.Provider>
