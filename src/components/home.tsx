@@ -7,6 +7,7 @@ import {
   Filter,
   User,
   LogOut,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -24,6 +25,10 @@ import JobListingCard from "./JobListingCard";
 import SearchSuggestions from "./SearchSuggestions";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import PersonalizedJobsSection from "./PersonalizedJobsSection";
+import JobCategorySection from "./JobCategorySection";
+import TrendingJobsSection from "./TrendingJobsSection";
+import { getPopularJobCategories } from "@/lib/jobRecommendations";
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -35,6 +40,8 @@ const HomePage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showJobSuggestions, setShowJobSuggestions] = useState(false);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [popularCategories, setPopularCategories] = useState<string[]>([]);
+  const [jobs, setJobs] = useState([]);
 
   const jobInputRef = useRef<HTMLInputElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
@@ -66,75 +73,15 @@ const HomePage = () => {
     };
   }, []);
 
-  // Mock job data for demonstration
-  const mockJobs = [
-    {
-      id: 1,
-      title: "Frontend Developer",
-      company: "TechCorp",
-      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=TechCorp",
-      location: "Montevideo",
-      salary: "$80,000 - $120,000",
-      type: "Full-time",
-      requirements: ["React", "TypeScript", "3+ years experience"],
-      posted: "2 days ago",
-    },
-    {
-      id: 2,
-      title: "UX Designer",
-      company: "DesignHub",
-      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=DesignHub",
-      location: "Remote",
-      salary: "$70,000 - $90,000",
-      type: "Contract",
-      requirements: ["Figma", "User Research", "Prototyping"],
-      posted: "1 week ago",
-    },
-    {
-      id: 3,
-      title: "Backend Engineer",
-      company: "DataSystems",
-      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=DataSystems",
-      location: "Canelones",
-      salary: "$100,000 - $140,000",
-      type: "Full-time",
-      requirements: ["Node.js", "PostgreSQL", "AWS"],
-      posted: "3 days ago",
-    },
-    {
-      id: 4,
-      title: "Product Manager",
-      company: "InnovateCo",
-      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=InnovateCo",
-      location: "Maldonado",
-      salary: "$90,000 - $130,000",
-      type: "Full-time",
-      requirements: ["Agile", "Roadmapping", "5+ years experience"],
-      posted: "Just now",
-    },
-    {
-      id: 5,
-      title: "DevOps Engineer",
-      company: "CloudTech",
-      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=CloudTech",
-      location: "Colonia",
-      salary: "$110,000 - $150,000",
-      type: "Full-time",
-      requirements: ["Kubernetes", "Docker", "CI/CD"],
-      posted: "5 days ago",
-    },
-    {
-      id: 6,
-      title: "Data Scientist",
-      company: "AnalyticsPro",
-      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=AnalyticsPro",
-      location: "Montevideo",
-      salary: "$95,000 - $135,000",
-      type: "Part-time",
-      requirements: ["Python", "Machine Learning", "SQL"],
-      posted: "1 day ago",
-    },
-  ];
+  // Cargar categorías populares
+  useEffect(() => {
+    const loadCategories = async () => {
+      const categories = await getPopularJobCategories();
+      setPopularCategories(categories);
+    };
+    
+    loadCategories();
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -314,7 +261,7 @@ const HomePage = () => {
               </Button>
 
               <span className="text-sm text-muted-foreground">
-                {mockJobs.length} jobs found
+                Encuentra miles de oportunidades
               </span>
             </div>
 
@@ -362,30 +309,58 @@ const HomePage = () => {
           </form>
         </div>
       </section>
-      {/* Job Listings */}
+      
+      {/* Sección de trabajos personalizada */}
       <section className="py-10">
         <div className="container mx-auto px-4">
-          <h2 className="text-2xl font-bold mb-6">Featured Jobs</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mockJobs.map((job) => (
-              <JobListingCard
-                key={job.id}
-                id={job.id.toString()}
-                jobTitle={job.title}
-                companyName={job.company}
-                companyLogo={job.logo}
-                location={job.location}
-                salaryRange={job.salary}
-                employmentType={job.type}
-                keyRequirements={job.requirements}
-                postedDate={job.posted}
-                onClick={() => navigate(`/job/${job.id}`)}
-              />
+          {/* Trabajos personalizados o destacados */}
+          <PersonalizedJobsSection limit={6} />
+          
+          {/* Trabajos en tendencia */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+            <div className="lg:col-span-2">
+              {popularCategories.length > 0 && (
+                <div className="border rounded-lg p-6 bg-white shadow-sm">
+                  <JobCategorySection 
+                    category={popularCategories[0]} 
+                    description="Los trabajos más demandados en esta categoría"
+                    limit={4}
+                    customLayout="grid grid-cols-1 md:grid-cols-2 gap-6"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="lg:col-span-1">
+              <TrendingJobsSection limit={8} />
+            </div>
+          </div>
+          
+          {/* Categorías adicionales - con espaciado mejorado */}
+          <div className="grid grid-cols-1 gap-10">
+            {popularCategories.slice(1, 3).map((category) => (
+              <div key={category} className="border-t pt-8">
+                <JobCategorySection
+                  category={category}
+                  limit={4}
+                />
+              </div>
+            ))}
+          </div>
+          
+          {/* Categorías adicionales completas - con espaciado mejorado */}
+          <div className="mt-12">
+            {popularCategories.slice(3).map((category) => (
+              <div key={category} className="border-t pt-8 mb-10">
+                <JobCategorySection
+                  category={category}
+                  limit={4}
+                />
+              </div>
             ))}
           </div>
         </div>
       </section>
+      
       {/* Footer */}
       <footer className="bg-muted py-10 mt-10">
         <div className="container mx-auto px-4">

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "./ui/button";
 import {
   Select,
@@ -22,10 +22,37 @@ import {
   Search,
   Sliders,
   X,
+  Bookmark,
+  Send,
+  Check,
+  Upload,
+  FileText,
+  Share2,
+  MoreVertical,
+  Copy,
+  Printer,
+  Flag,
+  Mail,
+  Facebook,
+  Twitter,
+  Linkedin,
 } from "lucide-react";
 import JobListingCard from "./JobListingCard";
 import { Combobox, ComboboxOption } from "./ui/combobox";
 import { Input } from "./ui/input";
+import { useAuth } from "@/contexts/AuthContext";
+import { saveJob, unsaveJob, isJobSaved, applyToJob, hasAppliedToJob, uploadResume } from "@/lib/jobInteractions";
+import { toast } from "@/components/ui/use-toast";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // Datos para filtros
 const uruguayDepartments = [
@@ -79,6 +106,14 @@ interface SearchState {
 const SearchResultsPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Obtener el jobId de los parámetros de búsqueda o del state
+  const jobIdFromParams = searchParams.get('jobId');
+  const jobIdFromState = location.state?.jobId;
+  const searchTermFromState = location.state?.searchTerm || '';
+  
+  const jobId = jobIdFromParams || jobIdFromState;
 
   // Trabajos de ejemplo
   const mockJobs = [
@@ -336,143 +371,415 @@ const SearchResultsPage = () => {
     },
   ];
 
-  // Obtenemos los parámetros de búsqueda o usamos valores por defecto
-  // Utilizamos objetos vacíos para evitar errores si location.state es null
-  const searchParams = location.state || {};
-
-  const [searchTerm, setSearchTerm] = useState(searchParams.searchTerm || "");
-  const [searchLocation, setSearchLocation] = useState(searchParams.location || "");
-  const [employmentType, setEmploymentType] = useState(
-    searchParams.employmentType || "all",
-  );
-  const [salaryMin, setSalaryMin] = useState([searchParams.salaryMin || 30000]);
-  const [showFilters, setShowFilters] = useState(true);
+  // Estado para filtros
+  const [searchTerm, setSearchTerm] = useState(searchTermFromState || "");
+  const [selectedLocation, setSelectedLocation] = useState<string>("");
+  const [selectedEmploymentType, setSelectedEmploymentType] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [sortBy, setSortBy] = useState("relevancia");
-  const [datePosted, setDatePosted] = useState("all");
-  const [experienceLevel, setExperienceLevel] = useState("all");
-
-  // Estado para resultados filtrados, inicializamos con todos los trabajos
+  const [salaryRange, setSalaryRange] = useState([0, 150000]);
+  const [showFilters, setShowFilters] = useState(false);
   const [filteredJobs, setFilteredJobs] = useState(mockJobs);
-  const [selectedJob, setSelectedJob] = useState(mockJobs[0]);
+  
+  // Seleccionar el primer trabajo por defecto, o buscar el trabajo específico si hay jobId
+  const getInitialSelectedJob = () => {
+    if (jobId) {
+      const foundJob = mockJobs.find(job => job.id.toString() === jobId);
+      return foundJob || mockJobs[0];
+    }
+    return filteredJobs.length > 0 ? filteredJobs[0] : mockJobs[0];
+  };
+  
+  const [selectedJob, setSelectedJob] = useState(getInitialSelectedJob());
+  
+  // Estado para aplicaciones y guardados
+  const { user, isAuthenticated } = useAuth();
+  const [isJobSaved, setIsJobSaved] = useState(false);
+  const [isAppliedToCurrentJob, setIsAppliedToCurrentJob] = useState(false);
+  const [applyDialogOpen, setApplyDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [coverLetter, setCoverLetter] = useState("");
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Nuevo estado para el menú de opciones y diálogo de compartir
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+
+  // Scroll to job with jobId if present
+  useEffect(() => {
+    if (jobId) {
+      // Filtrar para destacar este trabajo específico
+      const job = mockJobs.find(job => job.id.toString() === jobId);
+      if (job) {
+        setSearchTerm(job.title);
+        // Aplicar filtros automáticamente para mostrar este trabajo
+        applyFilters(job.title, job.location.toLowerCase(), job.type.toLowerCase(), job.areas[0]);
+        
+        // Asegurarse de seleccionar este trabajo para el panel de detalles
+        setSelectedJob(job);
+        
+        // Scroll al elemento después de renderizar
+        setTimeout(() => {
+          // Primero, eliminar cualquier resaltado existente
+          document.querySelectorAll('.job-card-selected').forEach(el => {
+            el.classList.remove('job-card-selected', 'bg-blue-50', 'border-blue-200');
+          });
+          
+          const element = document.getElementById(`job-${jobId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
+            // Destacar visualmente el elemento
+            element.classList.add('job-card-selected', 'bg-blue-50', 'border-blue-200');
+          }
+        }, 500);
+      }
+    }
+  }, [jobId]);
+  
+  // Función para aplicar filtros específicos
+  const applyFilters = (term: string, loc: string, type: string, category: string) => {
+    setSearchTerm(term);
+    setSelectedLocation(loc);
+    setSelectedEmploymentType(type === "all" ? "all" : type);
+    setSelectedCategory(category === "all" ? "all" : category);
+    
+    // También actualizar los trabajos filtrados
+    let filtered = [...mockJobs];
+    
+    if (term) {
+      filtered = filtered.filter(
+        (job) =>
+          job.title.toLowerCase().includes(term.toLowerCase()) ||
+          job.company.toLowerCase().includes(term.toLowerCase()) ||
+          job.requirements.some((req) =>
+            req.toLowerCase().includes(term.toLowerCase())
+          )
+      );
+    }
+    
+    if (loc && loc !== "all") {
+      filtered = filtered.filter(
+        (job) => job.location.toLowerCase().includes(loc.toLowerCase())
+      );
+    }
+    
+    if (type && type !== "all") {
+      filtered = filtered.filter(
+        (job) => job.type.toLowerCase().includes(type.toLowerCase())
+      );
+    }
+    
+    if (category && category !== "all") {
+      filtered = filtered.filter(
+        (job) => job.areas.includes(category.toLowerCase())
+      );
+    }
+    
+    setFilteredJobs(filtered);
+  };
 
   // Formatear valor de salario para mostrar
   const formatSalary = (value) => {
     return `$${value.toLocaleString()}`;
   };
 
-  // Efecto para filtrar trabajos basados en la búsqueda
-  useEffect(() => {
-    try {
-      console.log("Filtrando trabajos con:", {
-        searchTerm,
-        searchLocation,
-        employmentType,
-        salaryMin,
-        selectedCategory,
-        datePosted,
+  const resetFilters = () => {
+    setSelectedLocation("");
+    setSelectedEmploymentType("all");
+    setSalaryRange([0, 150000]);
+    setSelectedCategory("all");
+  };
+
+  // Función para manejar cambios en archivos de CV
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // Validar tipo de archivo (PDF, DOC, DOCX)
+      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Tipo de archivo no permitido",
+          description: "Por favor, sube un archivo PDF, DOC o DOCX",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Validar tamaño (máx 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB en bytes
+      if (file.size > maxSize) {
+        toast({
+          title: "Archivo demasiado grande",
+          description: "El tamaño máximo permitido es 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setResumeFile(file);
+      toast({
+        title: "Archivo seleccionado",
+        description: file.name,
       });
-
-      let results = [...mockJobs];
-
-      // Filtrar por término de búsqueda (título o empresa)
-      if (searchTerm) {
-        results = results.filter(
-          (job) =>
-            job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            job.company.toLowerCase().includes(searchTerm.toLowerCase()),
-        );
-      }
-
-      // Filtrar por ubicación basado en el input de texto
-      if (searchLocation && searchLocation !== "all") {
-        results = results.filter((job) =>
-          job.location.toLowerCase().includes(searchLocation.toLowerCase()),
-        );
-      }
-
-      // Filtrar por tipo de empleo
-      if (employmentType && employmentType !== "all") {
-        const empType = employmentType.toLowerCase();
-        results = results.filter((job) =>
-          job.type.toLowerCase().includes(empType),
-        );
-      }
-
-      // Filtrar por categoría
-      if (selectedCategory && selectedCategory !== "all") {
-        results = results.filter((job) =>
-          job.areas.includes(selectedCategory.toLowerCase())
-        );
-      }
-
-      // Filtrar por fecha de publicación
-      if (datePosted && datePosted !== "all") {
-        if (datePosted === "hoy") {
-          results = results.filter((job) => 
-            job.posted === "Just now" || job.posted.includes("day ago")
-          );
-        } else if (datePosted === "semana") {
-          results = results.filter((job) => 
-            !job.posted.includes("week") || parseInt(job.posted.split(" ")[0]) <= 1 
-          );
+    }
+  };
+  
+  // Función para guardar/eliminar trabajo de favoritos
+  const handleSaveJob = async () => {
+    if (!isAuthenticated) {
+      navigate("/auth", { state: { returnUrl: window.location.pathname, action: "save-job", jobId: selectedJob.id.toString() } });
+      return;
+    }
+    
+    if (!user) return;
+    
+    setIsLoading(true);
+    
+    try {
+      if (!isJobSaved) {
+        // Crear un objeto con los datos del trabajo
+        const jobData = {
+          id: selectedJob.id.toString(),
+          jobTitle: selectedJob.title,
+          companyName: selectedJob.company,
+          companyLogo: selectedJob.logo,
+          location: selectedJob.location,
+          salary: selectedJob.salary,
+          employmentType: selectedJob.type,
+          postedDate: selectedJob.posted
+        };
+        
+        // Intentamos guardar el trabajo con los datos completos
+        const { success, error } = await saveJob(user.id, selectedJob.id.toString(), jobData);
+        
+        if (success) {
+          setIsJobSaved(true);
+          toast({
+            title: "Trabajo guardado",
+            description: "El trabajo ha sido añadido a tus favoritos",
+          });
+        } else if (error) {
+          toast({
+            title: "Error",
+            description: error,
+            variant: "destructive",
+          });
+        }
+      } else {
+        // Intentamos eliminar el trabajo mediante la API
+        const { success, error } = await unsaveJob(user.id, selectedJob.id.toString());
+        
+        if (success) {
+          setIsJobSaved(false);
+          toast({
+            title: "Trabajo eliminado",
+            description: "El trabajo ha sido eliminado de tus favoritos",
+          });
+        } else if (error) {
+          toast({
+            title: "Error",
+            description: error,
+            variant: "destructive",
+          });
         }
       }
-
-      // Filtrar por salario mínimo
-      if (salaryMin[0] > 0) {
-        results = results.filter((job) => {
-          try {
-            const salaryText = job.salary;
-            const minSalary = parseInt(
-              salaryText.split("$")[1].split(" ")[0].replace(",", ""),
-            );
-            return minSalary >= salaryMin[0];
-          } catch (e) {
-            console.error("Error al procesar salario:", e);
-            return true;
-          }
+    } catch (error) {
+      console.error("Error al guardar/eliminar trabajo:", error);
+      toast({
+        title: "Error",
+        description: "Ha ocurrido un error. Por favor, inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Función para aplicar a un trabajo
+  const handleApply = async () => {
+    if (!user || isAppliedToCurrentJob) return;
+    
+    setIsLoading(true);
+    
+    try {
+      // Crear objeto con los datos del trabajo para guardarlos
+      const jobData = {
+        id: selectedJob.id.toString(),
+        jobTitle: selectedJob.title,
+        companyName: selectedJob.company,
+        companyLogo: selectedJob.logo,
+        location: selectedJob.location,
+        salary: selectedJob.salary,
+        employmentType: selectedJob.type
+      };
+      
+      const { success, error } = await applyToJob(user.id, selectedJob.id.toString(), {
+        coverLetter,
+        resumeFile: resumeFile || undefined,
+        jobData // Añadimos los datos del trabajo
+      });
+      
+      if (success) {
+        setIsAppliedToCurrentJob(true);
+        setApplyDialogOpen(false);
+        setCoverLetter("");
+        setResumeFile(null);
+        toast({
+          title: "Aplicación enviada",
+          description: "Tu aplicación ha sido enviada correctamente",
         });
-      }
-
-      // Ordenar resultados si es necesario
-      if (sortBy === "fecha") {
-        results.sort((a, b) => {
-          if (a.posted.includes("Just now")) return -1;
-          if (b.posted.includes("Just now")) return 1;
-          
-          const aTime = parseInt(a.posted.split(" ")[0]) || 0;
-          const bTime = parseInt(b.posted.split(" ")[0]) || 0;
-          
-          return aTime - bTime;
+      } else if (error) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
         });
-      }
-
-      console.log("Resultados filtrados:", results.length);
-      setFilteredJobs(results);
-
-      // Si hay resultados y el trabajo seleccionado no está en los resultados filtrados, seleccionar el primero
-      if (
-        results.length > 0 &&
-        (!selectedJob || !results.find((job) => job.id === selectedJob.id))
-      ) {
-        setSelectedJob(results[0]);
-      } else if (results.length === 0) {
-        setSelectedJob(null);
       }
     } catch (error) {
-      console.error("Error al filtrar trabajos:", error);
-      setFilteredJobs([]);
+      console.error("Error al aplicar al trabajo:", error);
+      toast({
+        title: "Error",
+        description: "Ha ocurrido un error al enviar tu aplicación. Por favor, inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-  }, [searchTerm, searchLocation, employmentType, salaryMin, selectedCategory, datePosted, sortBy]);
+  };
+  
+  // Efecto para verificar si el usuario ha guardado o aplicado al trabajo seleccionado
+  useEffect(() => {
+    const checkInteractions = async () => {
+      if (isAuthenticated && user && selectedJob) {
+        const jobId = selectedJob.id.toString();
+        
+        try {
+          // Renombramos la función importada para evitar conflicto con el estado
+          const { isJobSaved: checkJobSaved } = await import("@/lib/jobInteractions");
+          const { hasAppliedToJob: checkJobApplied } = await import("@/lib/jobInteractions");
+          
+          // Verificar si el trabajo está guardado
+          const saved = await checkJobSaved(user.id, jobId);
+          setIsJobSaved(saved);
+          
+          // Verificar si ya aplicó al trabajo
+          const applied = await checkJobApplied(user.id, jobId);
+          setIsAppliedToCurrentJob(applied);
+        } catch (error) {
+          console.error("Error al verificar interacciones:", error);
+        }
+      }
+    };
+    
+    checkInteractions();
+  }, [isAuthenticated, user, selectedJob]);
 
-  const resetFilters = () => {
-    setSearchLocation("");
-    setEmploymentType("all");
-    setSalaryMin([30000]);
-    setSelectedCategory("all");
-    setDatePosted("all");
-    setExperienceLevel("all");
+  // Función para manejar el clic en una tarjeta de trabajo
+  const handleJobCardClick = (job) => {
+    // Actualizar el trabajo seleccionado para el panel de detalles
+    setSelectedJob(job);
+    
+    // Actualizar la URL con el ID del trabajo seleccionado sin recargar la página
+    const searchParams = new URLSearchParams(window.location.search);
+    searchParams.set('jobId', job.id.toString());
+    
+    // Reemplazar la URL actual con la nueva que incluye el ID del trabajo
+    const newUrl = `${window.location.pathname}?${searchParams.toString()}`;
+    window.history.replaceState(null, '', newUrl);
+    
+    // Destacar visualmente el elemento seleccionado
+    setTimeout(() => {
+      // Primero, eliminar cualquier resaltado existente
+      document.querySelectorAll('.job-card-selected').forEach(el => {
+        el.classList.remove('job-card-selected', 'bg-blue-50', 'border-blue-200');
+      });
+      
+      // Luego, resaltar el elemento seleccionado
+      const element = document.getElementById(`job-${job.id}`);
+      if (element) {
+        element.classList.add('job-card-selected', 'bg-blue-50', 'border-blue-200');
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 100);
+  };
+
+  // Función para manejar el clic en el botón de compartir
+  const handleShareClick = () => {
+    setShareDialogOpen(true);
+  };
+  
+  // Función para manejar el clic en el botón de menú
+  const handleMenuClick = () => {
+    setMenuOpen(!menuOpen);
+  };
+  
+  // Función para copiar el enlace al portapapeles
+  const copyToClipboard = () => {
+    const jobUrl = `${window.location.origin}/search-results?jobId=${selectedJob.id}`;
+    navigator.clipboard.writeText(jobUrl).then(
+      () => {
+        toast({
+          title: "Enlace copiado",
+          description: "El enlace ha sido copiado al portapapeles",
+        });
+      },
+      (err) => {
+        console.error("No se pudo copiar el enlace: ", err);
+        toast({
+          title: "Error",
+          description: "No se pudo copiar el enlace",
+          variant: "destructive",
+        });
+      }
+    );
+  };
+  
+  // Función para imprimir la oferta de trabajo
+  const printJob = () => {
+    window.print();
+  };
+  
+  // Función para reportar una oferta de trabajo
+  const reportJob = () => {
+    toast({
+      title: "Oferta reportada",
+      description: "Gracias por ayudarnos a mantener la calidad de las ofertas",
+    });
+    setMenuOpen(false);
+  };
+  
+  // Función para compartir en redes sociales
+  const shareOnSocialMedia = (platform: string) => {
+    const jobUrl = `${window.location.origin}/search-results?jobId=${selectedJob.id}`;
+    const jobTitle = selectedJob.title;
+    const text = `Oferta de trabajo: ${jobTitle} en ${selectedJob.company}`;
+    
+    let shareUrl = '';
+    
+    switch (platform) {
+      case 'facebook':
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(jobUrl)}`;
+        break;
+      case 'twitter':
+        shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(jobUrl)}`;
+        break;
+      case 'linkedin':
+        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(jobUrl)}`;
+        break;
+      case 'email':
+        shareUrl = `mailto:?subject=${encodeURIComponent(text)}&body=${encodeURIComponent(`He encontrado esta oferta de trabajo que podría interesarte: ${jobUrl}`)}`;
+        break;
+      case 'whatsapp':
+        shareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`${text} ${jobUrl}`)}`;
+        break;
+    }
+    
+    if (shareUrl) {
+      window.open(shareUrl, '_blank');
+    }
+    
+    setShareDialogOpen(false);
   };
 
   return (
@@ -511,9 +818,9 @@ const SearchResultsPage = () => {
       </header>
 
       <div className="container mx-auto px-4 py-6">
-        <div className="flex gap-6">
+        <div className="flex flex-col lg:flex-row gap-6">
           {/* Left sidebar - Filters and Job listings */}
-          <div className="flex-1 max-w-md">
+          <div className="w-full lg:w-2/5 xl:w-1/3">
             {/* Mobile filters button */}
             <div className="md:hidden mb-4">
               <Button
@@ -561,8 +868,8 @@ const SearchResultsPage = () => {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Ubicación</label>
                     <Select 
-                      value={searchLocation} 
-                      onValueChange={setSearchLocation}
+                      value={selectedLocation} 
+                      onValueChange={setSelectedLocation}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecciona ubicación" />
@@ -583,8 +890,8 @@ const SearchResultsPage = () => {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Tipo de empleo</label>
                     <Select 
-                      value={employmentType} 
-                      onValueChange={setEmploymentType}
+                      value={selectedEmploymentType} 
+                      onValueChange={setSelectedEmploymentType}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecciona tipo" />
@@ -624,15 +931,15 @@ const SearchResultsPage = () => {
                     <label className="text-sm font-medium">Salario mínimo</label>
                     <div>
                       <Slider
-                        value={salaryMin}
-                        onValueChange={setSalaryMin}
-                        min={30000}
+                        value={salaryRange}
+                        onValueChange={setSalaryRange}
+                        min={0}
                         max={150000}
                         step={5000}
                       />
                       <div className="flex justify-between mt-2 text-xs text-gray-500">
-                        <span>{formatSalary(30000)}</span>
-                        <span>{formatSalary(salaryMin[0])}</span>
+                        <span>{formatSalary(0)}</span>
+                        <span>{formatSalary(salaryRange[0])}</span>
                         <span>{formatSalary(150000)}</span>
                       </div>
                     </div>
@@ -648,72 +955,31 @@ const SearchResultsPage = () => {
               </p>
             </div>
 
-            <div className="space-y-3">
+            <div>
               {filteredJobs.length > 0 ? (
-                filteredJobs.map((job) => (
-                  <Card
-                    key={job.id}
-                    className={`cursor-pointer hover:shadow-md transition-shadow border bg-white ${
-                      selectedJob?.id === job.id
-                        ? "border-blue-500 shadow-md"
-                        : "border-gray-200"
-                    }`}
-                    onClick={() => setSelectedJob(job)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1">
-                          {job.id <= 2 && (
-                            <div className="flex gap-2 mb-2">
-                              <Badge
-                                variant="destructive"
-                                className="text-xs px-2 py-0.5"
-                              >
-                                Se precisa Urgente
-                              </Badge>
-                              <Badge
-                                variant="secondary"
-                                className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700"
-                              >
-                                Empleo destacado
-                              </Badge>
-                            </div>
-                          )}
-                          <h3 className="font-semibold text-base text-gray-900 mb-1">
-                            {job.title}
-                          </h3>
-                          <div className="flex items-center gap-1 mb-1">
-                            <CheckCircle className="h-4 w-4 text-blue-500" />
-                            <span className="text-sm font-medium text-gray-700">
-                              {job.company}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1 text-sm text-gray-600 mb-2">
-                            <MapPin className="h-3 w-3" />
-                            <span>{job.location}</span>
-                          </div>
-                          <div className="flex items-center gap-1 text-xs text-gray-500">
-                            <Clock className="h-3 w-3" />
-                            <span>{job.posted}</span>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-gray-400"
-                        >
-                          <svg
-                            className="h-4 w-4"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                          </svg>
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                <div className="space-y-4">
+                  {filteredJobs.map((job) => (
+                    <div 
+                      id={`job-${job.id}`} 
+                      key={job.id} 
+                      className={job.id.toString() === selectedJob?.id.toString() ? 'job-card-selected bg-blue-50 border-blue-200 rounded-lg' : ''}
+                      onClick={() => handleJobCardClick(job)}
+                    >
+                      <JobListingCard
+                        id={job.id.toString()}
+                        companyLogo={job.logo}
+                        jobTitle={job.title}
+                        companyName={job.company}
+                        location={job.location}
+                        salaryRange={job.salary}
+                        employmentType={job.type}
+                        keyRequirements={job.requirements}
+                        postedDate={job.posted}
+                        onClick={() => handleJobCardClick(job)}
+                      />
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="text-center p-8 bg-white rounded-lg border">
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -731,7 +997,7 @@ const SearchResultsPage = () => {
           </div>
 
           {/* Right side - Job detail */}
-          <div className="flex-1">
+          <div className="w-full lg:w-3/5 xl:w-2/3 mt-6 lg:mt-0">
             {selectedJob && (
               <Card className="sticky top-4 bg-white">
                 <CardContent className="p-6">
@@ -762,15 +1028,39 @@ const SearchResultsPage = () => {
                         <p className="text-gray-600">{selectedJob.company}</p>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      <svg
-                        className="h-4 w-4"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                      </svg>
-                    </Button>
+                    <div className="relative">
+                      <Button variant="ghost" size="sm" onClick={handleMenuClick}>
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                      
+                      {menuOpen && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border">
+                          <div className="py-1">
+                            <button 
+                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              onClick={copyToClipboard}
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copiar enlace
+                            </button>
+                            <button 
+                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              onClick={printJob}
+                            >
+                              <Printer className="h-4 w-4 mr-2" />
+                              Imprimir oferta
+                            </button>
+                            <button 
+                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              onClick={reportJob}
+                            >
+                              <Flag className="h-4 w-4 mr-2" />
+                              Reportar oferta
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-1 mb-2">
@@ -794,66 +1084,74 @@ const SearchResultsPage = () => {
                     </span>
                   </div>
 
-                  <Button className="w-full mb-4 bg-blue-700 hover:bg-blue-800">
-                    Postularme a {selectedJob.title}
+                  <Button 
+                    className="w-full mb-4 bg-blue-700 hover:bg-blue-800"
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        navigate("/auth", { 
+                          state: { 
+                            returnUrl: window.location.pathname, 
+                            action: "apply-job", 
+                            jobId: selectedJob.id.toString() 
+                          } 
+                        });
+                        return;
+                      }
+                      
+                      if (!user || isAppliedToCurrentJob) return;
+                      setApplyDialogOpen(true);
+                    }}
+                    disabled={isLoading || isAppliedToCurrentJob}
+                  >
+                    {isAppliedToCurrentJob ? (
+                      <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Ya aplicaste a {selectedJob.title}
+                      </>
+                    ) : (
+                      <>Postularme a {selectedJob.title}</>
+                    )}
                   </Button>
 
                   <div className="flex gap-2 mb-6">
-                    <Button variant="outline" size="sm" title="Guardar trabajo">
-                      <svg
-                        className="h-4 w-4 mr-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                        />
-                      </svg>
-                      Guardar
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className={`text-xs h-8 ${isJobSaved ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:text-blue-700' : ''}`}
+                      onClick={handleSaveJob}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <span className="animate-spin mr-1.5">
+                          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24">
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                        </span>
+                      ) : (
+                        <Bookmark className={`h-3.5 w-3.5 mr-1.5 ${isJobSaved ? 'fill-blue-600' : ''}`} />
+                      )}
+                      {isJobSaved ? 'Guardado' : 'Guardar'}
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       title="Compartir trabajo"
+                      onClick={handleShareClick}
                     >
-                      <svg
-                        className="h-4 w-4 mr-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
-                        />
-                      </svg>
+                      <Share2 className="h-4 w-4 mr-1" />
                       Compartir
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      title="Reportar trabajo"
-                    >
-                      <svg
-                        className="h-4 w-4 mr-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                        />
-                      </svg>
-                      Reportar
                     </Button>
                   </div>
 
@@ -997,6 +1295,213 @@ const SearchResultsPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Apply Job Dialog */}
+      <Dialog open={applyDialogOpen} onOpenChange={setApplyDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Aplicar a {selectedJob?.title}</DialogTitle>
+            <DialogDescription>
+              Completa el formulario para enviar tu aplicación a {selectedJob?.company}.
+              {isAppliedToCurrentJob && (
+                <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md text-green-700">
+                  <Check className="inline-block mr-1 h-4 w-4" />
+                  Ya has aplicado a este trabajo anteriormente.
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="coverLetter">Carta de presentación</Label>
+              <Textarea
+                id="coverLetter"
+                placeholder="Escribe una breve presentación..."
+                className="min-h-[120px]"
+                value={coverLetter}
+                onChange={(e) => setCoverLetter(e.target.value)}
+                disabled={isLoading || isAppliedToCurrentJob}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="resume">CV / Curriculum</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="resume"
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  disabled={isLoading || isAppliedToCurrentJob}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading || isAppliedToCurrentJob}
+                  className="flex-1"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {resumeFile ? resumeFile.name : "Subir CV"}
+                </Button>
+                {resumeFile && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setResumeFile(null)}
+                    disabled={isLoading || isAppliedToCurrentJob}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                      <path d="M18 6 6 18"></path>
+                      <path d="m6 6 12 12"></path>
+                    </svg>
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Formatos aceptados: PDF, DOC, DOCX. Tamaño máximo: 5MB.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter className="sm:justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setApplyDialogOpen(false)}
+              disabled={isLoading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleApply}
+              disabled={isLoading || isAppliedToCurrentJob || !resumeFile}
+            >
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Enviar aplicación
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo para compartir */}
+      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Compartir esta oferta de trabajo</DialogTitle>
+            <DialogDescription>
+              Comparte esta oferta con tu red profesional o amigos
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="link">Enlace de la oferta</Label>
+              <div className="flex items-center gap-2">
+                <Input 
+                  id="link" 
+                  value={selectedJob ? `${window.location.origin}/search-results?jobId=${selectedJob.id}` : ''} 
+                  readOnly 
+                  className="flex-1"
+                />
+                <Button 
+                  type="button" 
+                  size="sm" 
+                  variant="secondary"
+                  onClick={copyToClipboard}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label>Compartir en redes sociales</Label>
+              <div className="flex gap-2 flex-wrap">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => shareOnSocialMedia('facebook')}
+                  className="flex-1"
+                >
+                  <Facebook className="h-4 w-4 mr-2" />
+                  Facebook
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => shareOnSocialMedia('twitter')}
+                  className="flex-1"
+                >
+                  <Twitter className="h-4 w-4 mr-2" />
+                  Twitter
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => shareOnSocialMedia('linkedin')}
+                  className="flex-1"
+                >
+                  <Linkedin className="h-4 w-4 mr-2" />
+                  LinkedIn
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => shareOnSocialMedia('email')}
+                  className="flex-1"
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Email
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => shareOnSocialMedia('whatsapp')}
+                  className="flex-1"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
+                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"></path>
+                  </svg>
+                  WhatsApp
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className="sm:justify-end">
+            <Button 
+              type="button" 
+              variant="secondary"
+              onClick={() => setShareDialogOpen(false)}
+            >
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

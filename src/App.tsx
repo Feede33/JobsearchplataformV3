@@ -6,9 +6,12 @@ import ApplicationForm from "./components/ApplicationForm";
 import UserProfileSection from "./components/UserProfileSection";
 import AuthForm from "./components/AuthForm";
 import SearchResultsPage from "./components/SearchResultsPage";
+import SupabaseDiagnostic from "./components/SupabaseDiagnostic";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SavedJobsProvider } from "./contexts/SavedJobsContext";
-import routes from "tempo-routes";
+
+// Empty routes array instead of external import
+const tempoRoutes: any[] = [];
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -23,10 +26,11 @@ function AppRoutes() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<AuthForm />} />
-          <Route path="/job/:id" element={<JobDetailView />} />
-          <Route path="/apply/:id" element={<ApplicationForm />} />
+          <Route path="/job/:id" element={<Navigate to="/search-results" replace />} />
+          <Route path="/apply/:id" element={<Navigate to="/search-results" replace />} />
           <Route path="/search-results" element={<SearchResultsPage />} />
           <Route path="/search" element={<SearchResultsPage />} />
+          <Route path="/supabase-diagnostic" element={<SupabaseDiagnostic />} />
           <Route
             path="/profile"
             element={
@@ -36,7 +40,7 @@ function AppRoutes() {
             }
           />
         </Routes>
-        {import.meta.env.VITE_TEMPO === "true" && useRoutes(routes)}
+        {import.meta.env.VITE_TEMPO === "true" && useRoutes(tempoRoutes)}
       </>
     </Suspense>
   );
