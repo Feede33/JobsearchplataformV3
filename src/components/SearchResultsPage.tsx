@@ -36,6 +36,10 @@ import {
   Facebook,
   Twitter,
   Linkedin,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import JobListingCard from "./JobListingCard";
 import { Combobox, ComboboxOption } from "./ui/combobox";
@@ -257,9 +261,9 @@ const SearchResultsPage = () => {
       location: "Remote",
       salary: "$50,000 - $70,000",
       type: "Part-time",
-      requirements: ["Copywriting", "SEO Content", "Editing"],
+      requirements: ["Content Creation", "SEO Writing", "Editing"],
       posted: "3 days ago",
-      areas: ["marketing", "content"],
+      areas: ["marketing"],
     },
     {
       id: 13,
@@ -269,9 +273,9 @@ const SearchResultsPage = () => {
       location: "Montevideo",
       salary: "$100,000 - $130,000",
       type: "Full-time",
-      requirements: ["Network Security", "Penetration Testing", "CISSP"],
+      requirements: ["Network Security", "Threat Analysis", "Security Tools"],
       posted: "Just now",
-      areas: ["technology", "security"],
+      areas: ["technology"],
     },
     {
       id: 14,
@@ -281,7 +285,7 @@ const SearchResultsPage = () => {
       location: "Colonia",
       salary: "$60,000 - $90,000 + commission",
       type: "Full-time",
-      requirements: ["B2B Sales", "CRM Software", "Negotiation"],
+      requirements: ["B2B Sales", "Negotiation", "CRM"],
       posted: "5 days ago",
       areas: ["sales"],
     },
@@ -293,13 +297,9 @@ const SearchResultsPage = () => {
       location: "Montevideo",
       salary: "$70,000 - $85,000",
       type: "Contract",
-      requirements: [
-        "Project Management",
-        "Gantt Charts",
-        "Stakeholder Communication",
-      ],
+      requirements: ["Project Management", "Organization", "Communication"],
       posted: "1 week ago",
-      areas: ["management", "operations"],
+      areas: ["management"],
     },
     {
       id: 16,
@@ -309,9 +309,9 @@ const SearchResultsPage = () => {
       location: "Tacuarembó",
       salary: "$75,000 - $100,000",
       type: "Full-time",
-      requirements: ["Automated Testing", "Manual Testing", "Test Planning"],
+      requirements: ["Manual Testing", "Automation", "QA Methodologies"],
       posted: "4 days ago",
-      areas: ["technology", "quality"],
+      areas: ["technology"],
     },
     {
       id: 17,
@@ -321,9 +321,9 @@ const SearchResultsPage = () => {
       location: "Remote",
       salary: "$60,000 - $80,000",
       type: "Contract",
-      requirements: ["Adobe Creative Suite", "Typography", "Brand Identity"],
+      requirements: ["Adobe Creative Suite", "Visual Design", "Branding"],
       posted: "2 days ago",
-      areas: ["design", "creative"],
+      areas: ["design"],
     },
     {
       id: 18,
@@ -333,11 +333,7 @@ const SearchResultsPage = () => {
       location: "Maldonado",
       salary: "$45,000 - $55,000",
       type: "Full-time",
-      requirements: [
-        "Customer Service",
-        "Ticketing Systems",
-        "Problem Resolution",
-      ],
+      requirements: ["Customer Service", "Problem Solving", "Communication"],
       posted: "6 days ago",
       areas: ["customer service"],
     },
@@ -349,11 +345,7 @@ const SearchResultsPage = () => {
       location: "Montevideo",
       salary: "$80,000 - $110,000",
       type: "Full-time",
-      requirements: [
-        "Requirements Gathering",
-        "Process Modeling",
-        "Data Analysis",
-      ],
+      requirements: ["Business Analysis", "Requirements Gathering", "Process Modeling"],
       posted: "3 days ago",
       areas: ["business", "technology"],
     },
@@ -365,10 +357,130 @@ const SearchResultsPage = () => {
       location: "Canelones",
       salary: "$90,000 - $135,000",
       type: "Full-time",
-      requirements: ["React", "Node.js", "MongoDB", "DevOps"],
+      requirements: ["React", "Node.js", "MongoDB"],
       posted: "Just now",
       areas: ["technology"],
     },
+    {
+      id: 21,
+      title: "AI Research Scientist",
+      company: "NeuralTech",
+      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=NeuralTech",
+      location: "Montevideo",
+      salary: "$120,000 - $160,000",
+      type: "Full-time",
+      requirements: ["PhD/Masters", "PyTorch/TensorFlow", "Research Experience"],
+      posted: "Just now",
+      areas: ["technology", "research"],
+    },
+    {
+      id: 22,
+      title: "E-commerce Manager",
+      company: "RetailFuture",
+      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=RetailFuture",
+      location: "Punta del Este",
+      salary: "$70,000 - $95,000",
+      type: "Full-time",
+      requirements: ["Shopify/WooCommerce", "Analytics", "Digital Marketing"],
+      posted: "2 days ago",
+      areas: ["marketing", "sales"],
+    },
+    {
+      id: 23,
+      title: "Blockchain Developer",
+      company: "CryptoInnovate",
+      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=CryptoInnovate",
+      location: "Remote",
+      salary: "$100,000 - $140,000",
+      type: "Contract",
+      requirements: ["Solidity", "Web3.js", "Smart Contracts"],
+      posted: "3 days ago",
+      areas: ["technology", "finance"],
+    },
+    {
+      id: 24,
+      title: "Sustainability Consultant",
+      company: "GreenFuture",
+      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=GreenFuture",
+      location: "Montevideo",
+      salary: "$65,000 - $90,000",
+      type: "Full-time",
+      requirements: ["ESG", "Environmental Science", "Sustainability"],
+      posted: "1 week ago",
+      areas: ["consulting", "environment"],
+    },
+    {
+      id: 25,
+      title: "Game Developer",
+      company: "PlayVerse",
+      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=PlayVerse",
+      location: "Montevideo",
+      salary: "$75,000 - $110,000",
+      type: "Full-time",
+      requirements: ["Unity/Unreal", "C#/C++", "Game Design"],
+      posted: "4 days ago",
+      areas: ["technology", "gaming"],
+    },
+    {
+      id: 26,
+      title: "Arquitecto de Software",
+      company: "SystemArchitects",
+      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=SystemArchitects",
+      location: "Montevideo",
+      salary: "$110,000 - $150,000",
+      type: "Full-time",
+      requirements: ["System Design", "Microservices", "Design Patterns"],
+      posted: "Just now",
+      areas: ["technology"],
+    },
+    {
+      id: 27,
+      title: "Community Manager",
+      company: "SocialBoost",
+      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=SocialBoost",
+      location: "Remote",
+      salary: "$45,000 - $65,000",
+      type: "Full-time",
+      requirements: ["Social Media", "Content Creation", "Community Building"],
+      posted: "5 days ago",
+      areas: ["marketing", "social media"],
+    },
+    {
+      id: 28,
+      title: "Especialista en Ciberseguridad",
+      company: "SecureDefense",
+      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=SecureDefense",
+      location: "Montevideo",
+      salary: "$90,000 - $130,000",
+      type: "Full-time",
+      requirements: ["Penetration Testing", "CISSP/CEH", "Security Tools"],
+      posted: "Just now",
+      areas: ["technology", "security"],
+    },
+    {
+      id: 29,
+      title: "Analista de Datos",
+      company: "DataInsight",
+      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=DataInsight",
+      location: "Canelones",
+      salary: "$65,000 - $85,000",
+      type: "Full-time",
+      requirements: ["SQL", "Power BI/Tableau", "Python/R"],
+      posted: "3 days ago",
+      areas: ["technology", "data"],
+    },
+    {
+      id: 30,
+      title: "Ingeniero DevSecOps",
+      company: "SecureFlow",
+      logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=SecureFlow",
+      location: "Remote",
+      salary: "$95,000 - $135,000",
+      type: "Full-time",
+      requirements: ["CI/CD", "Docker/Kubernetes", "Security Automation"],
+      posted: "2 days ago",
+      areas: ["technology", "security"],
+    }
   ];
 
   // Estado para filtros
@@ -404,6 +516,11 @@ const SearchResultsPage = () => {
   // Nuevo estado para el menú de opciones y diálogo de compartir
   const [menuOpen, setMenuOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+
+  // Estados para la paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [jobsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Scroll to job with jobId if present
   useEffect(() => {
@@ -476,6 +593,9 @@ const SearchResultsPage = () => {
     }
     
     setFilteredJobs(filtered);
+    
+    // Resetear la paginación a la primera página cuando se aplican nuevos filtros
+    setCurrentPage(1);
   };
 
   // Formatear valor de salario para mostrar
@@ -488,6 +608,12 @@ const SearchResultsPage = () => {
     setSelectedEmploymentType("all");
     setSalaryRange([0, 150000]);
     setSelectedCategory("all");
+    
+    // Actualizar los trabajos filtrados para mostrar todos
+    setFilteredJobs([...mockJobs]);
+    
+    // Resetear la paginación a la primera página
+    setCurrentPage(1);
   };
 
   // Función para manejar cambios en archivos de CV
@@ -782,6 +908,37 @@ const SearchResultsPage = () => {
     setShareDialogOpen(false);
   };
 
+  // Efecto para calcular el número total de páginas
+  useEffect(() => {
+    if (filteredJobs.length > 0) {
+      setTotalPages(Math.ceil(filteredJobs.length / jobsPerPage));
+      // Si cambian los filtros, volver a la primera página
+      setCurrentPage(1);
+    } else {
+      setTotalPages(1);
+    }
+  }, [filteredJobs, jobsPerPage]);
+
+  // Obtener los trabajos para la página actual
+  const getCurrentPageJobs = () => {
+    const indexOfLastJob = currentPage * jobsPerPage;
+    const indexOfFirstJob = indexOfLastJob - jobsPerPage;
+    return filteredJobs.slice(indexOfFirstJob, indexOfLastJob);
+  };
+
+  // Función para cambiar de página
+  const paginate = (pageNumber) => {
+    // Asegurarse de que el número de página es válido
+    if (pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+      // Hacer scroll al inicio de los resultados
+      window.scrollTo({
+        top: document.getElementById('job-results')?.offsetTop - 100 || 0,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -948,17 +1105,22 @@ const SearchResultsPage = () => {
               </div>
             )}
 
-            <div className="mb-4">
+            <div className="mb-4" id="job-results">
               <p className="text-sm text-gray-600 mb-3">
                 <span className="font-semibold">{filteredJobs.length}</span>{" "}
                 Ofertas de trabajo encontradas
+                {filteredJobs.length > jobsPerPage && (
+                  <span className="ml-1">
+                    (Mostrando {((currentPage - 1) * jobsPerPage) + 1}-{Math.min(currentPage * jobsPerPage, filteredJobs.length)} de {filteredJobs.length})
+                  </span>
+                )}
               </p>
             </div>
 
             <div>
               {filteredJobs.length > 0 ? (
                 <div className="space-y-4">
-                  {filteredJobs.map((job) => (
+                  {getCurrentPageJobs().map((job) => (
                     <div 
                       id={`job-${job.id}`} 
                       key={job.id} 
@@ -979,6 +1141,90 @@ const SearchResultsPage = () => {
                       />
                     </div>
                   ))}
+
+                  {/* Paginación */}
+                  {totalPages > 1 && (
+                    <div className="flex justify-center items-center mt-6 pt-4 border-t">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => paginate(1)}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronsLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => paginate(currentPage - 1)}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        
+                        <div className="flex items-center gap-1 mx-2">
+                          {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter(pageNum => {
+                              // Mostrar siempre la primera página, la última página y las páginas cercanas a la actual
+                              return pageNum === 1 || 
+                                     pageNum === totalPages || 
+                                     (pageNum >= currentPage - 1 && pageNum <= currentPage + 1);
+                            })
+                            .map((pageNum, index, array) => {
+                              // Si hay un salto entre los números de página, mostrar puntos suspensivos
+                              if (index > 0 && pageNum > array[index - 1] + 1) {
+                                return (
+                                  <React.Fragment key={`ellipsis-${pageNum}`}>
+                                    <span className="px-2 text-gray-400">...</span>
+                                    <Button
+                                      variant={currentPage === pageNum ? "default" : "outline"}
+                                      size="sm"
+                                      className="h-8 w-8"
+                                      onClick={() => paginate(pageNum)}
+                                    >
+                                      {pageNum}
+                                    </Button>
+                                  </React.Fragment>
+                                );
+                              }
+                              return (
+                                <Button
+                                  key={pageNum}
+                                  variant={currentPage === pageNum ? "default" : "outline"}
+                                  size="sm"
+                                  className="h-8 w-8"
+                                  onClick={() => paginate(pageNum)}
+                                >
+                                  {pageNum}
+                                </Button>
+                              );
+                            })}
+                        </div>
+                        
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => paginate(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => paginate(totalPages)}
+                          disabled={currentPage === totalPages}
+                        >
+                          <ChevronsRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center p-8 bg-white rounded-lg border">

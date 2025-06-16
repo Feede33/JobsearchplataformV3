@@ -639,6 +639,326 @@ const jobDetails = [
     ],
     postedDate: "2023-09-25",
     companyLogo: "https://api.dicebear.com/7.x/avataaars/svg?seed=OmniTech"
+  },
+  {
+    id: "21",
+    title: "AI Research Scientist",
+    company: "NeuralTech",
+    location: "Montevideo",
+    salary: "$120,000 - $160,000",
+    employmentType: "Full-time",
+    description: "NeuralTech busca un AI Research Scientist para liderar proyectos innovadores en el campo de la inteligencia artificial. El candidato ideal combinará sólidos conocimientos teóricos con experiencia práctica en desarrollo de modelos de IA, y tendrá la capacidad de transformar conceptos avanzados en soluciones aplicables a problemas del mundo real.",
+    responsibilities: [
+      "Investigar y desarrollar algoritmos de aprendizaje automático y deep learning",
+      "Diseñar e implementar modelos de IA para aplicaciones específicas",
+      "Publicar resultados de investigación en conferencias y revistas científicas",
+      "Colaborar con equipos de ingeniería para implementar soluciones",
+      "Mantenerse actualizado sobre los avances en el campo de la IA"
+    ],
+    requirements: [
+      "PhD o Maestría en Ciencias de la Computación, IA o campo relacionado",
+      "Experiencia demostrable en investigación de IA/ML",
+      "Conocimientos avanzados de PyTorch o TensorFlow",
+      "Publicaciones en conferencias o revistas de prestigio (NIPS, ICML, etc.)",
+      "Capacidad para comunicar conceptos complejos de forma clara"
+    ],
+    benefits: [
+      "Salario altamente competitivo",
+      "Flexibilidad para publicar investigaciones",
+      "Acceso a recursos de computación de alto rendimiento",
+      "Presupuesto para conferencias y desarrollo profesional",
+      "Colaboración con instituciones académicas"
+    ],
+    postedDate: "2023-10-01",
+    companyLogo: "https://api.dicebear.com/7.x/avataaars/svg?seed=NeuralTech"
+  },
+  {
+    id: "22",
+    title: "E-commerce Manager",
+    company: "RetailFuture",
+    location: "Punta del Este",
+    salary: "$70,000 - $95,000",
+    employmentType: "Full-time",
+    description: "RetailFuture busca un E-commerce Manager experimentado para liderar nuestra estrategia de ventas online. El candidato ideal tendrá experiencia en gestión de plataformas de e-commerce, optimización de conversión y análisis de datos, con capacidad para impulsar el crecimiento de ventas y mejorar la experiencia del cliente en nuestros canales digitales.",
+    responsibilities: [
+      "Gestionar y optimizar la plataforma de e-commerce",
+      "Desarrollar estrategias para aumentar conversiones y ventas",
+      "Analizar métricas y KPIs para identificar oportunidades de mejora",
+      "Coordinar con equipos de marketing, producto y logística",
+      "Implementar mejoras en la experiencia de usuario"
+    ],
+    requirements: [
+      "Experiencia demostrable en gestión de e-commerce",
+      "Conocimientos de plataformas como Shopify, WooCommerce o Magento",
+      "Experiencia en análisis de datos y herramientas de analítica web",
+      "Comprensión de SEO, SEM y estrategias de marketing digital",
+      "Capacidad para gestionar múltiples prioridades"
+    ],
+    benefits: [
+      "Salario competitivo más bonos por desempeño",
+      "Seguro médico completo",
+      "Horario flexible y trabajo remoto parcial",
+      "Descuentos en productos de la empresa",
+      "Oportunidades de desarrollo profesional"
+    ],
+    postedDate: "2023-09-28",
+    companyLogo: "https://api.dicebear.com/7.x/avataaars/svg?seed=RetailFuture"
+  },
+  {
+    id: "23",
+    title: "Blockchain Developer",
+    company: "CryptoInnovate",
+    location: "Remote",
+    salary: "$100,000 - $140,000",
+    employmentType: "Contract",
+    description: "CryptoInnovate busca un Blockchain Developer experimentado para desarrollar soluciones descentralizadas innovadoras. El candidato ideal tendrá experiencia en desarrollo de contratos inteligentes, DApps y protocolos blockchain, con un profundo conocimiento de las tecnologías y estándares actuales en el espacio cripto.",
+    responsibilities: [
+      "Desarrollar y auditar contratos inteligentes",
+      "Crear aplicaciones descentralizadas (DApps)",
+      "Implementar soluciones de seguridad para activos digitales",
+      "Integrar sistemas con diferentes blockchains",
+      "Participar en el diseño de tokenomics y mecanismos de consenso"
+    ],
+    requirements: [
+      "Experiencia con Solidity, Web3.js y Ethereum",
+      "Conocimientos de otras blockchains como Polkadot, Solana o Cardano",
+      "Comprensión de criptografía y seguridad blockchain",
+      "Experiencia en desarrollo de DeFi, NFTs o DAOs",
+      "Capacidad para mantenerse actualizado en un campo en rápida evolución"
+    ],
+    benefits: [
+      "Compensación competitiva en cripto o fiat",
+      "Trabajo 100% remoto con horario flexible",
+      "Participación en proyectos innovadores",
+      "Posibilidad de compensación con tokens del proyecto",
+      "Comunidad vibrante y colaborativa"
+    ],
+    postedDate: "2023-09-30",
+    companyLogo: "https://api.dicebear.com/7.x/avataaars/svg?seed=CryptoInnovate"
+  },
+  {
+    id: "24",
+    title: "Sustainability Consultant",
+    company: "GreenFuture",
+    location: "Montevideo",
+    salary: "$65,000 - $90,000",
+    employmentType: "Full-time",
+    description: "GreenFuture busca un Sustainability Consultant para ayudar a empresas a implementar prácticas sostenibles y reducir su impacto ambiental. El candidato ideal combinará conocimientos técnicos en sostenibilidad con habilidades de consultoría y gestión de proyectos, y tendrá la capacidad de desarrollar estrategias ESG efectivas adaptadas a diferentes sectores.",
+    responsibilities: [
+      "Realizar auditorías de sostenibilidad para clientes",
+      "Desarrollar estrategias ESG personalizadas",
+      "Implementar programas de reducción de huella de carbono",
+      "Asesorar sobre certificaciones ambientales y regulaciones",
+      "Crear informes de sostenibilidad y métricas de impacto"
+    ],
+    requirements: [
+      "Formación en Ciencias Ambientales, Sostenibilidad o campo relacionado",
+      "Experiencia en consultoría o gestión ambiental",
+      "Conocimientos de estándares ESG y marcos de reportes (GRI, SASB)",
+      "Comprensión de regulaciones ambientales",
+      "Excelentes habilidades de comunicación y presentación"
+    ],
+    benefits: [
+      "Salario competitivo según experiencia",
+      "Seguro médico con cobertura ampliada",
+      "Horario flexible y trabajo remoto parcial",
+      "Días adicionales de vacaciones por voluntariado ambiental",
+      "Desarrollo profesional continuo"
+    ],
+    postedDate: "2023-09-27",
+    companyLogo: "https://api.dicebear.com/7.x/avataaars/svg?seed=GreenFuture"
+  },
+  {
+    id: "25",
+    title: "Game Developer",
+    company: "PlayVerse",
+    location: "Montevideo",
+    salary: "$75,000 - $110,000",
+    employmentType: "Full-time",
+    description: "PlayVerse busca un Game Developer creativo y técnicamente hábil para unirse a nuestro equipo de desarrollo de videojuegos. El candidato ideal tendrá experiencia en desarrollo de juegos con motores modernos, una sólida comprensión de los principios de diseño de juegos y la capacidad de crear experiencias interactivas atractivas que cautiven a los jugadores.",
+    responsibilities: [
+      "Desarrollar funcionalidades de juego utilizando Unity o Unreal Engine",
+      "Implementar mecánicas de juego y sistemas interactivos",
+      "Optimizar el rendimiento en múltiples plataformas",
+      "Colaborar con artistas, diseñadores y otros desarrolladores",
+      "Participar en todas las fases del ciclo de desarrollo"
+    ],
+    requirements: [
+      "Experiencia demostrable en desarrollo de juegos con Unity o Unreal Engine",
+      "Sólidos conocimientos de C# o C++",
+      "Comprensión de principios de diseño de juegos y UX",
+      "Experiencia en optimización de rendimiento",
+      "Portfolio con ejemplos de juegos o componentes desarrollados"
+    ],
+    benefits: [
+      "Salario competitivo según experiencia",
+      "Horario flexible y ambiente creativo",
+      "Acceso a eventos y conferencias de la industria",
+      "Seguro médico completo",
+      "Participación en los beneficios de los juegos exitosos"
+    ],
+    postedDate: "2023-09-29",
+    companyLogo: "https://api.dicebear.com/7.x/avataaars/svg?seed=PlayVerse"
+  },
+  {
+    id: "26",
+    title: "Arquitecto de Software",
+    company: "SystemArchitects",
+    location: "Montevideo",
+    salary: "$110,000 - $150,000",
+    employmentType: "Full-time",
+    description: "SystemArchitects busca un Arquitecto de Software experimentado para diseñar y supervisar la implementación de sistemas complejos y escalables. El candidato ideal combinará una visión técnica estratégica con experiencia práctica en desarrollo, y tendrá la capacidad de tomar decisiones arquitectónicas que equilibren requisitos funcionales, no funcionales y restricciones del negocio.",
+    responsibilities: [
+      "Diseñar arquitecturas de sistemas escalables y mantenibles",
+      "Establecer estándares y mejores prácticas de desarrollo",
+      "Evaluar y seleccionar tecnologías apropiadas",
+      "Mentorear a equipos de desarrollo",
+      "Colaborar con stakeholders para alinear soluciones técnicas con objetivos de negocio"
+    ],
+    requirements: [
+      "Al menos 8 años de experiencia en desarrollo de software",
+      "Experiencia demostrable en diseño de arquitecturas de sistemas",
+      "Conocimientos profundos de patrones de diseño y arquitectónicos",
+      "Experiencia con sistemas distribuidos y microservicios",
+      "Capacidad para comunicar conceptos técnicos complejos a audiencias diversas"
+    ],
+    benefits: [
+      "Salario premium acorde a la experiencia",
+      "Seguro médico y dental premium",
+      "Horario flexible y trabajo remoto",
+      "Presupuesto anual para desarrollo profesional",
+      "Participación en conferencias internacionales"
+    ],
+    postedDate: "2023-10-02",
+    companyLogo: "https://api.dicebear.com/7.x/avataaars/svg?seed=SystemArchitects"
+  },
+  {
+    id: "27",
+    title: "Community Manager",
+    company: "SocialBoost",
+    location: "Remote",
+    salary: "$45,000 - $65,000",
+    employmentType: "Full-time",
+    description: "SocialBoost busca un Community Manager creativo y orientado a resultados para gestionar y hacer crecer nuestras comunidades en redes sociales. El candidato ideal tendrá experiencia en gestión de comunidades online, creación de contenido y estrategias de engagement, con capacidad para construir relaciones auténticas con audiencias y convertir seguidores en clientes leales.",
+    responsibilities: [
+      "Gestionar perfiles en múltiples plataformas de redes sociales",
+      "Crear y programar contenido atractivo y relevante",
+      "Interactuar con la comunidad y responder comentarios",
+      "Analizar métricas y ajustar estrategias según resultados",
+      "Colaborar con equipos de marketing y diseño"
+    ],
+    requirements: [
+      "Experiencia demostrable como Community Manager",
+      "Conocimientos de herramientas de gestión de redes sociales",
+      "Excelentes habilidades de comunicación escrita",
+      "Capacidad para crear contenido visual básico",
+      "Comprensión de analíticas de redes sociales"
+    ],
+    benefits: [
+      "Trabajo 100% remoto con horario flexible",
+      "Seguro médico básico",
+      "Presupuesto para herramientas y recursos",
+      "Oportunidades de crecimiento profesional",
+      "Ambiente de trabajo dinámico y creativo"
+    ],
+    postedDate: "2023-09-26",
+    companyLogo: "https://api.dicebear.com/7.x/avataaars/svg?seed=SocialBoost"
+  },
+  {
+    id: "28",
+    title: "Especialista en Ciberseguridad",
+    company: "SecureDefense",
+    location: "Montevideo",
+    salary: "$90,000 - $130,000",
+    employmentType: "Full-time",
+    description: "SecureDefense busca un Especialista en Ciberseguridad para proteger la infraestructura y datos de nuestra organización contra amenazas cibernéticas. El candidato ideal tendrá experiencia en seguridad ofensiva y defensiva, conocimientos avanzados de tecnologías de seguridad y la capacidad de implementar estrategias efectivas para mitigar riesgos en un panorama de amenazas en constante evolución.",
+    responsibilities: [
+      "Realizar evaluaciones de vulnerabilidades y pruebas de penetración",
+      "Implementar y gestionar soluciones de seguridad",
+      "Responder a incidentes de seguridad",
+      "Desarrollar políticas y procedimientos de seguridad",
+      "Capacitar al personal en mejores prácticas de seguridad"
+    ],
+    requirements: [
+      "Experiencia en ciberseguridad y gestión de riesgos",
+      "Certificaciones relevantes (CISSP, CEH, OSCP)",
+      "Conocimientos de seguridad en redes, sistemas y aplicaciones",
+      "Experiencia en herramientas de seguridad y monitoreo",
+      "Capacidad para mantenerse actualizado sobre nuevas amenazas"
+    ],
+    benefits: [
+      "Salario competitivo según experiencia y certificaciones",
+      "Seguro médico premium",
+      "Horario flexible y trabajo remoto parcial",
+      "Presupuesto para certificaciones y formación continua",
+      "Participación en conferencias de seguridad"
+    ],
+    postedDate: "2023-10-03",
+    companyLogo: "https://api.dicebear.com/7.x/avataaars/svg?seed=SecureDefense"
+  },
+  {
+    id: "29",
+    title: "Analista de Datos",
+    company: "DataInsight",
+    location: "Canelones",
+    salary: "$65,000 - $85,000",
+    employmentType: "Full-time",
+    description: "DataInsight busca un Analista de Datos meticuloso y orientado a resultados para transformar datos complejos en insights accionables. El candidato ideal combinará habilidades técnicas de análisis con capacidad para comunicar hallazgos de forma clara, y tendrá la capacidad de utilizar datos para impulsar decisiones estratégicas que generen valor para el negocio.",
+    responsibilities: [
+      "Recopilar, limpiar y procesar conjuntos de datos complejos",
+      "Realizar análisis estadísticos y modelado predictivo",
+      "Crear visualizaciones y dashboards interactivos",
+      "Identificar tendencias y patrones en los datos",
+      "Presentar hallazgos y recomendaciones a stakeholders"
+    ],
+    requirements: [
+      "Experiencia en análisis de datos y estadística",
+      "Dominio de SQL y herramientas de visualización (Power BI, Tableau)",
+      "Conocimientos de Python o R para análisis de datos",
+      "Capacidad para traducir datos en insights de negocio",
+      "Excelentes habilidades de comunicación"
+    ],
+    benefits: [
+      "Salario competitivo según experiencia",
+      "Seguro médico completo",
+      "Horario flexible y trabajo remoto parcial",
+      "Oportunidades de desarrollo profesional",
+      "Ambiente colaborativo y orientado al aprendizaje"
+    ],
+    postedDate: "2023-09-29",
+    companyLogo: "https://api.dicebear.com/7.x/avataaars/svg?seed=DataInsight"
+  },
+  {
+    id: "30",
+    title: "Ingeniero DevSecOps",
+    company: "SecureFlow",
+    location: "Remote",
+    salary: "$95,000 - $135,000",
+    employmentType: "Full-time",
+    description: "SecureFlow busca un Ingeniero DevSecOps para integrar prácticas de seguridad en nuestros procesos de desarrollo y operaciones. El candidato ideal combinará conocimientos de desarrollo, operaciones y seguridad, con capacidad para implementar la seguridad como código y automatizar controles de seguridad a lo largo del ciclo de vida del desarrollo de software.",
+    responsibilities: [
+      "Implementar prácticas de 'seguridad como código'",
+      "Integrar herramientas de seguridad en pipelines de CI/CD",
+      "Automatizar pruebas de seguridad y escaneo de vulnerabilidades",
+      "Desarrollar y mantener infraestructura como código segura",
+      "Colaborar con equipos de desarrollo y seguridad"
+    ],
+    requirements: [
+      "Experiencia en DevOps e integración de seguridad",
+      "Conocimientos de herramientas de CI/CD (Jenkins, GitHub Actions)",
+      "Experiencia con contenedores y orquestación (Docker, Kubernetes)",
+      "Familiaridad con herramientas de seguridad automatizadas",
+      "Comprensión de principios de seguridad en la nube"
+    ],
+    benefits: [
+      "Salario altamente competitivo",
+      "Trabajo 100% remoto",
+      "Seguro médico internacional",
+      "Presupuesto para desarrollo profesional y certificaciones",
+      "Equipo de trabajo internacional y diverso"
+    ],
+    postedDate: "2023-10-01",
+    companyLogo: "https://api.dicebear.com/7.x/avataaars/svg?seed=SecureFlow"
   }
 ];
 
