@@ -57,4 +57,55 @@ CREATE POLICY "Users can insert their own job applications"
 -- Política para permitir a los usuarios actualizar sus propias aplicaciones
 CREATE POLICY "Users can update their own job applications" 
   ON job_applications FOR UPDATE 
-  USING (auth.uid() = user_id); 
+  USING (auth.uid() = user_id);
+
+-- Tabla para almacenar trabajos reales
+CREATE TABLE IF NOT EXISTS jobs (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  company TEXT NOT NULL,
+  logo TEXT,
+  location TEXT,
+  salary TEXT,
+  type TEXT,
+  requirements JSONB,
+  description TEXT,
+  posted_date TEXT,
+  category TEXT,
+  is_featured BOOLEAN DEFAULT false,
+  is_remote BOOLEAN DEFAULT false,
+  score INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Agregar políticas RLS para jobs
+ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
+
+-- Política para permitir lectura pública de trabajos
+CREATE POLICY "Jobs are viewable by everyone" 
+  ON jobs FOR SELECT 
+  USING (true);
+
+-- Política para permitir inserción solo a administradores
+CREATE POLICY "Only admins can insert jobs" 
+  ON jobs FOR INSERT 
+  WITH CHECK (auth.jwt() ->> 'role' = 'admin');
+
+-- Política para permitir actualización solo a administradores
+CREATE POLICY "Only admins can update jobs" 
+  ON jobs FOR UPDATE 
+  USING (auth.jwt() ->> 'role' = 'admin');
+
+-- Política para permitir eliminación solo a administradores
+CREATE POLICY "Only admins can delete jobs" 
+  ON jobs FOR DELETE 
+  USING (auth.jwt() ->> 'role' = 'admin');
+
+-- Índices para mejorar el rendimiento de búsquedas
+CREATE INDEX IF NOT EXISTS idx_jobs_title ON jobs USING gin(title gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs USING gin(company gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs USING gin(location gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_jobs_category ON jobs(category);
+CREATE INDEX IF NOT EXISTS idx_jobs_is_featured ON jobs(is_featured);
+CREATE INDEX IF NOT EXISTS idx_jobs_is_remote ON jobs(is_remote); 

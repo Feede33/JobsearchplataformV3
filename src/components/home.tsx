@@ -8,6 +8,7 @@ import {
   User,
   LogOut,
   ChevronRight,
+  Settings,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -29,6 +30,7 @@ import PersonalizedJobsSection from "./PersonalizedJobsSection";
 import JobCategorySection from "./JobCategorySection";
 import TrendingJobsSection from "./TrendingJobsSection";
 import { getPopularJobCategories } from "@/lib/jobRecommendations";
+import { supabase } from "@/lib/supabase";
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -42,6 +44,7 @@ const HomePage = () => {
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [popularCategories, setPopularCategories] = useState<string[]>([]);
   const [jobs, setJobs] = useState([]);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const jobInputRef = useRef<HTMLInputElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
@@ -72,6 +75,29 @@ const HomePage = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Verificar si el usuario es administrador
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!isAuthenticated || !user) {
+        setIsAdmin(false);
+        return;
+      }
+      
+      try {
+        // Verificar si el usuario tiene rol de admin en JWT
+        const { data: { user: userData } } = await supabase.auth.getUser();
+        const isUserAdmin = userData?.app_metadata?.role === 'admin';
+        
+        setIsAdmin(isUserAdmin);
+      } catch (error) {
+        console.error("Error al verificar rol de administrador:", error);
+        setIsAdmin(false);
+      }
+    };
+    
+    checkAdminStatus();
+  }, [isAuthenticated, user]);
 
   // Cargar categorías populares
   useEffect(() => {
@@ -145,6 +171,15 @@ const HomePage = () => {
               >
                 Resources
               </a>
+              {isAdmin && (
+                <button
+                  onClick={() => navigate("/admin/jobs")}
+                  className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors flex items-center gap-1"
+                >
+                  <Settings className="h-4 w-4" />
+                  Admin Panel
+                </button>
+              )}
             </nav>
           </div>
           <div className="flex items-center space-x-4">

@@ -73,6 +73,8 @@ const JobListingCard = ({
   useEffect(() => {
     const checkInteractions = async () => {
       if (isAuthenticated && user) {
+        console.log("JobListingCard - Verificando interacciones para jobId:", id);
+        
         const saved = await isJobSaved(user.id, id);
         setIsSaved(saved);
         

@@ -11,6 +11,7 @@ const SupabaseDiagnostic = () => {
     tablesExist: {
       saved_jobs: boolean;
       job_applications: boolean;
+      jobs: boolean;
     };
     bucketsExist: {
       resumes: boolean;
@@ -23,6 +24,7 @@ const SupabaseDiagnostic = () => {
     tablesExist: {
       saved_jobs: false,
       job_applications: false,
+      jobs: false,
     },
     bucketsExist: {
       resumes: false,
@@ -39,6 +41,105 @@ const SupabaseDiagnostic = () => {
     fixed: false,
     error: null
   });
+
+  // Estado para la ejecución del script SQL
+  const [scriptExecution, setScriptExecution] = useState({
+    executing: false,
+    success: false,
+    error: null
+  });
+
+  // Script SQL para crear tablas
+  const createTablesScript = `
+-- Tabla para trabajos guardados (favoritos)
+CREATE TABLE IF NOT EXISTS saved_jobs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  job_id INTEGER NOT NULL,
+  job_data JSONB DEFAULT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, job_id)
+);
+
+-- Agregar políticas RLS (Row Level Security) para saved_jobs
+ALTER TABLE saved_jobs ENABLE ROW LEVEL SECURITY;
+
+-- Política para permitir a los usuarios ver solo sus propios trabajos guardados
+CREATE POLICY "Users can view their own saved jobs" 
+  ON saved_jobs FOR SELECT 
+  USING (auth.uid() = user_id);
+
+-- Política para permitir a los usuarios insertar sus propios trabajos guardados
+CREATE POLICY "Users can insert their own saved jobs" 
+  ON saved_jobs FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+-- Política para permitir a los usuarios eliminar sus propios trabajos guardados
+CREATE POLICY "Users can delete their own saved jobs" 
+  ON saved_jobs FOR DELETE 
+  USING (auth.uid() = user_id);
+
+-- Tabla para aplicaciones a trabajos
+CREATE TABLE IF NOT EXISTS job_applications (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  job_id INTEGER NOT NULL,
+  cover_letter TEXT,
+  resume_url TEXT,
+  status VARCHAR(50) DEFAULT 'pending',
+  job_data JSONB DEFAULT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  application_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, job_id)
+);
+
+-- Agregar políticas RLS para job_applications
+ALTER TABLE job_applications ENABLE ROW LEVEL SECURITY;
+
+-- Política para permitir a los usuarios ver solo sus propias aplicaciones
+CREATE POLICY "Users can view their own job applications" 
+  ON job_applications FOR SELECT 
+  USING (auth.uid() = user_id);
+
+-- Política para permitir a los usuarios insertar sus propias aplicaciones
+CREATE POLICY "Users can insert their own job applications" 
+  ON job_applications FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+-- Política para permitir a los usuarios actualizar sus propias aplicaciones
+CREATE POLICY "Users can update their own job applications" 
+  ON job_applications FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+-- Tabla para almacenar trabajos reales
+CREATE TABLE IF NOT EXISTS jobs (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  company TEXT NOT NULL,
+  logo TEXT,
+  location TEXT,
+  salary TEXT,
+  type TEXT,
+  requirements JSONB,
+  description TEXT,
+  posted_date TEXT,
+  category TEXT,
+  is_featured BOOLEAN DEFAULT false,
+  is_remote BOOLEAN DEFAULT false,
+  score INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Agregar políticas RLS para jobs
+ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
+
+-- Política para permitir lectura pública de trabajos
+CREATE POLICY "Jobs are viewable by everyone" 
+  ON jobs FOR SELECT 
+  USING (true);
+`;
 
   const runDiagnostic = async () => {
     setDiagResults((prev) => ({ ...prev, loading: true, error: null }));
@@ -81,6 +182,18 @@ const SupabaseDiagnostic = () => {
       }
       const { error: jobApplicationsError } = jobApplicationsResult;
 
+      // Verificar tabla jobs
+      let jobsResult;
+      try {
+        jobsResult = await supabase.from("jobs").select("id").limit(1);
+      } catch (err) {
+        jobsResult = {
+          data: null,
+          error: { message: "Error al verificar jobs" },
+        };
+      }
+      const { error: jobsError } = jobsResult;
+
       // Verificar buckets
       let resumesBucketResult;
       try {
@@ -109,6 +222,7 @@ const SupabaseDiagnostic = () => {
         tablesExist: {
           saved_jobs: !savedJobsError || savedJobsError.code === "PGRST116",
           job_applications: !jobApplicationsError || jobApplicationsError.code === "PGRST116",
+          jobs: !jobsError || jobsError.code === "PGRST116",
         },
         bucketsExist: {
           resumes: !resumesError,
@@ -234,6 +348,61 @@ const SupabaseDiagnostic = () => {
     }
   };
 
+  // Función para ejecutar el script SQL
+  const executeCreateTablesScript = async () => {
+    setScriptExecution({ executing: true, success: false, error: null });
+    
+    try {
+      // Ejecutar el script SQL
+      const { error } = await supabase.rpc('exec_sql', { sql: createTablesScript });
+      
+      if (error) {
+        // Si falla, intentar ejecutar con otro método
+        try {
+          // Dividir el script en instrucciones individuales
+          const statements = createTablesScript
+            .split(';')
+            .map(statement => statement.trim())
+            .filter(statement => statement.length > 0);
+          
+          // Ejecutar cada instrucción por separado
+          for (const statement of statements) {
+            const { error: stmtError } = await supabase.rpc('exec_sql', { sql: statement + ';' });
+            if (stmtError) {
+              console.warn('Error en instrucción:', statement, stmtError);
+              // Continuar con la siguiente instrucción
+            }
+          }
+          
+          setScriptExecution({ executing: false, success: true, error: null });
+          
+          // Recargar diagnóstico después de un breve retraso
+          setTimeout(() => runDiagnostic(), 1500);
+          
+        } catch (err) {
+          console.error('Error al ejecutar script por partes:', err);
+          setScriptExecution({ 
+            executing: false, 
+            success: false, 
+            error: "No se pudo ejecutar el script. Verifica los permisos de tu usuario en Supabase." 
+          });
+        }
+      } else {
+        setScriptExecution({ executing: false, success: true, error: null });
+        
+        // Recargar diagnóstico después de un breve retraso
+        setTimeout(() => runDiagnostic(), 1500);
+      }
+    } catch (error) {
+      console.error('Error al ejecutar script:', error);
+      setScriptExecution({ 
+        executing: false, 
+        success: false, 
+        error: "Error al ejecutar el script SQL. Verifica la consola para más detalles." 
+      });
+    }
+  };
+
   useEffect(() => {
     runDiagnostic();
   }, []);
@@ -290,6 +459,14 @@ const SupabaseDiagnostic = () => {
                   <div className="flex items-center justify-between bg-muted p-2 rounded">
                     <span>job_applications</span>
                     {diagResults.tablesExist.job_applications ? (
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-600" />
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between bg-muted p-2 rounded">
+                    <span>jobs</span>
+                    {diagResults.tablesExist.jobs ? (
                       <CheckCircle className="h-5 w-5 text-green-600" />
                     ) : (
                       <XCircle className="h-5 w-5 text-red-600" />
@@ -371,12 +548,43 @@ const SupabaseDiagnostic = () => {
                 </div>
               )}
 
-              {(!diagResults.tablesExist.saved_jobs || !diagResults.tablesExist.job_applications) && (
+              {(!diagResults.tablesExist.saved_jobs || !diagResults.tablesExist.job_applications || !diagResults.tablesExist.jobs) && (
                 <Alert className="mt-4">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Tablas faltantes</AlertTitle>
                   <AlertDescription>
-                    Debes crear las tablas necesarias en Supabase. Sigue las instrucciones en el archivo <code>INSTRUCCIONES_SUPABASE.md</code> y ejecuta el script SQL en <code>supabase_tables.sql</code>.
+                    Algunas tablas requeridas no existen. Puedes crearlas manualmente ejecutando el script SQL o usar el botón a continuación.
+                    <div className="mt-4">
+                      <Button
+                        onClick={executeCreateTablesScript}
+                        disabled={scriptExecution.executing}
+                        className="flex items-center gap-2"
+                      >
+                        {scriptExecution.executing ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Ejecutando...
+                          </>
+                        ) : (
+                          <>
+                            <Database className="h-4 w-4" />
+                            Crear tablas automáticamente
+                          </>
+                        )}
+                      </Button>
+                      
+                      {scriptExecution.success && (
+                        <p className="text-green-600 text-sm mt-2">
+                          Script ejecutado correctamente. Recargando diagnóstico...
+                        </p>
+                      )}
+                      
+                      {scriptExecution.error && (
+                        <p className="text-red-600 text-sm mt-2">
+                          {scriptExecution.error}
+                        </p>
+                      )}
+                    </div>
                   </AlertDescription>
                 </Alert>
               )}

@@ -785,6 +785,8 @@ const SearchResultsPage = () => {
           const { isJobSaved: checkJobSaved } = await import("@/lib/jobInteractions");
           const { hasAppliedToJob: checkJobApplied } = await import("@/lib/jobInteractions");
           
+          console.log("Verificando interacciones para jobId:", jobId);
+          
           // Verificar si el trabajo está guardado
           const saved = await checkJobSaved(user.id, jobId);
           setIsJobSaved(saved);
@@ -957,19 +959,6 @@ const SearchResultsPage = () => {
               </Button>
               <h1 className="text-xl font-bold text-primary">JobSearch</h1>
             </div>
-
-            {/* Top filter bar similar to Computrabajo */}
-            <div className="hidden md:flex items-center gap-2">
-              <Button 
-                variant="default" 
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                className="h-8 flex items-center gap-1"
-              >
-                <Sliders className="h-3 w-3" />
-                {showFilters ? "Ocultar filtros" : "Mostrar filtros"}
-              </Button>
-            </div>
           </div>
         </div>
       </header>
@@ -978,17 +967,6 @@ const SearchResultsPage = () => {
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Left sidebar - Filters and Job listings */}
           <div className="w-full lg:w-2/5 xl:w-1/3">
-            {/* Mobile filters button */}
-            <div className="md:hidden mb-4">
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                className="w-full flex items-center justify-center gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                {showFilters ? "Ocultar filtros" : "Mostrar filtros"}
-              </Button>
-            </div>
             
             {/* Filter panel */}
             {showFilters && (
@@ -1115,6 +1093,17 @@ const SearchResultsPage = () => {
                   </span>
                 )}
               </p>
+              
+              {/* Botón de filtros debajo del contador de resultados */}
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                className="w-full mb-4 flex items-center justify-center gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                {showFilters ? "Ocultar filtros" : "Mostrar filtros"}
+              </Button>
             </div>
 
             <div>

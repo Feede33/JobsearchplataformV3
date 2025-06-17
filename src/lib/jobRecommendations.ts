@@ -4,7 +4,7 @@ import { supabase } from "./supabase";
  * Tipos para recomendaciones de trabajos
  */
 interface JobRecommendation {
-  id: string;
+  id: string | number;
   title: string;
   company: string;
   logo: string;
@@ -15,6 +15,8 @@ interface JobRecommendation {
   posted: string;
   score?: number;
   category?: string;
+  is_featured?: boolean;
+  is_remote?: boolean;
 }
 
 interface RecommendationOptions {
@@ -34,14 +36,54 @@ export const getPersonalizedJobRecommendations = async (
   try {
     const { userId, location, skills, limit = 6, categories } = options;
     
-    // En una implementación real, aquí consultaríamos la base de datos
-    // y aplicaríamos algoritmos de recomendación basados en:
-    // 1. Historial del usuario (búsquedas, clics, aplicaciones)
-    // 2. Ubicación
-    // 3. Habilidades
-    // 4. Tendencias del mercado
+    // Si hay un userId, intentar usar la función de recomendación personalizada
+    if (userId) {
+      try {
+        const { data, error } = await supabase
+          .rpc('get_recommended_jobs', { 
+            p_user_id: userId,
+            p_limit: limit
+          });
+        
+        if (data && !error) {
+          console.log('Usando recomendaciones personalizadas de Supabase');
+          return data.map(job => formatJobData(job));
+        }
+      } catch (err) {
+        console.warn('Error al obtener recomendaciones personalizadas:', err);
+      }
+    }
+    
+    // Intentar obtener datos de la tabla jobs
+    try {
+      let query = supabase.from('jobs').select('*');
+      
+      // Aplicar filtros si existen
+      if (location) {
+        query = query.ilike('location', `%${location}%`);
+      }
+      
+      if (categories && categories.length > 0) {
+        query = query.in('category', categories);
+      }
+      
+      // Ordenar por destacados primero
+      query = query.order('is_featured', { ascending: false })
+                   .order('created_at', { ascending: false });
+      
+      // Obtener resultados
+      const { data, error } = await query.limit(limit);
+      
+      if (data && !error && data.length > 0) {
+        console.log('Usando datos de la tabla jobs de Supabase');
+        return data.map(job => formatJobData(job));
+      }
+    } catch (err) {
+      console.warn('Error al consultar tabla jobs:', err);
+    }
 
-    // Por ahora, simulamos recomendaciones con datos mock
+    // Si no hay datos reales o hay error, usar datos mock como fallback
+    console.log('Usando datos mock para recomendaciones');
     const mockRecommendations = generateMockRecommendations(userId, location, skills, categories);
     return mockRecommendations.slice(0, limit);
   } catch (error) {
@@ -58,7 +100,40 @@ export const getFeaturedJobsByCategory = async (
   limit: number = 4
 ): Promise<JobRecommendation[]> => {
   try {
-    // En implementación real, consultaríamos la base de datos
+    // Intentar usar la función de Supabase
+    try {
+      const { data, error } = await supabase
+        .rpc('get_jobs_by_category', { 
+          p_category: category,
+          p_limit: limit
+        });
+      
+      if (data && !error && data.length > 0) {
+        console.log(`Usando datos de Supabase para categoría ${category}`);
+        return data.map(job => formatJobData(job));
+      }
+    } catch (err) {
+      console.warn(`Error al obtener trabajos por categoría ${category}:`, err);
+    }
+    
+    // Intentar consulta directa a la tabla
+    try {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('category', category)
+        .order('is_featured', { ascending: false })
+        .limit(limit);
+      
+      if (data && !error && data.length > 0) {
+        console.log(`Usando datos de la tabla jobs para categoría ${category}`);
+        return data.map(job => formatJobData(job));
+      }
+    } catch (err) {
+      console.warn(`Error al consultar tabla jobs para categoría ${category}:`, err);
+    }
+    
+    // Fallback a datos mock
     const mockJobs = generateMockRecommendations(undefined, undefined, undefined, [category]);
     return mockJobs.slice(0, limit);
   } catch (error) {
@@ -71,7 +146,23 @@ export const getFeaturedJobsByCategory = async (
  * Obtiene las categorías de trabajo más populares
  */
 export const getPopularJobCategories = async (): Promise<string[]> => {
-  // En implementación real, consultaríamos la base de datos para obtener categorías populares
+  try {
+    // Intentar obtener categorías únicas de la tabla jobs
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('category')
+      .order('category');
+    
+    if (data && !error && data.length > 0) {
+      // Extraer categorías únicas
+      const categories = [...new Set(data.map(job => job.category))];
+      return categories;
+    }
+  } catch (err) {
+    console.warn('Error al obtener categorías:', err);
+  }
+  
+  // Fallback a categorías predefinidas
   return [
     "Desarrollo de Software",
     "Marketing Digital",
@@ -91,21 +182,84 @@ export const getPopularJobCategories = async (): Promise<string[]> => {
  */
 export const getTrendingJobs = async (limit: number = 3): Promise<JobRecommendation[]> => {
   try {
-    // En implementación real, consultaríamos la base de datos para obtener trabajos con más interacciones recientes
-    const mockTrending = generateMockRecommendations();
+    // Intentar usar la función de Supabase
+    try {
+      const { data, error } = await supabase
+        .rpc('get_trending_jobs', { p_limit: limit });
+      
+      if (data && !error && data.length > 0) {
+        console.log('Usando datos de tendencias de Supabase');
+        return data.map(job => formatJobData(job));
+      }
+    } catch (err) {
+      console.warn('Error al obtener trabajos en tendencia:', err);
+    }
     
-    // Asegurar que siempre devolvemos suficientes trabajos para llenar el espacio
+    // Intentar consulta directa ordenando por fecha
+    try {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .order('is_featured', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(Math.max(limit, 8)); // Asegurar suficientes elementos
+      
+      if (data && !error && data.length > 0) {
+        console.log('Usando datos recientes como tendencias');
+        return data.map(job => formatJobData(job));
+      }
+    } catch (err) {
+      console.warn('Error al consultar tabla jobs para tendencias:', err);
+    }
+    
+    // Fallback a datos mock
+    const mockTrending = generateMockRecommendations();
     const minItems = 8; // Mínimo de elementos para llenar la sección
     const actualLimit = Math.max(limit, minItems);
-    
-    // Ordenar por "tendencia" (simulado)
     return mockTrending
-      .sort(() => 0.5 - Math.random()) // Mezcla aleatoria para simular tendencias diferentes
+      .sort(() => 0.5 - Math.random())
       .slice(0, actualLimit);
   } catch (error) {
     console.error("Error al obtener trabajos en tendencia:", error);
     return [];
   }
+};
+
+/**
+ * Formatea datos de trabajo desde Supabase al formato de la aplicación
+ */
+const formatJobData = (job: any): JobRecommendation => {
+  // Convertir requirements de string JSON a array si es necesario
+  let requirements: string[] = [];
+  if (job.requirements) {
+    if (typeof job.requirements === 'string') {
+      try {
+        requirements = JSON.parse(job.requirements);
+      } catch (e) {
+        requirements = [job.requirements];
+      }
+    } else if (Array.isArray(job.requirements)) {
+      requirements = job.requirements;
+    } else if (typeof job.requirements === 'object') {
+      requirements = Object.values(job.requirements);
+    }
+  }
+  
+  return {
+    id: job.id,
+    title: job.title,
+    company: job.company,
+    logo: job.logo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${job.company}`,
+    location: job.location,
+    salary: job.salary || 'No especificado',
+    type: job.type || 'Full-time',
+    requirements: requirements,
+    posted: job.posted_date || 'Recently',
+    category: job.category,
+    score: job.score || 0,
+    is_featured: job.is_featured || false,
+    is_remote: job.is_remote || false
+  };
 };
 
 /**
