@@ -108,4 +108,33 @@ CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs USING gin(company gin_trgm_o
 CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs USING gin(location gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_jobs_category ON jobs(category);
 CREATE INDEX IF NOT EXISTS idx_jobs_is_featured ON jobs(is_featured);
-CREATE INDEX IF NOT EXISTS idx_jobs_is_remote ON jobs(is_remote); 
+CREATE INDEX IF NOT EXISTS idx_jobs_is_remote ON jobs(is_remote);
+
+-- Tabla para notificaciones de usuarios
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  type VARCHAR(50) NOT NULL,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  data JSONB DEFAULT NULL,
+  is_read BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  read_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
+);
+
+-- Habilitar RLS para la tabla de notificaciones
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+
+-- Política para permitir a los usuarios ver solo sus propias notificaciones
+CREATE POLICY "Users can view their own notifications" 
+  ON notifications FOR SELECT 
+  USING (auth.uid() = user_id);
+
+-- Política para permitir a los usuarios marcar como leídas sus propias notificaciones
+CREATE POLICY "Users can update their own notifications" 
+  ON notifications FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+-- Índice para mejorar el rendimiento de consultas de notificaciones no leídas
+CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read); 

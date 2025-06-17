@@ -2,6 +2,9 @@ import { Suspense, lazy } from "react";
 import { useRoutes, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SavedJobsProvider } from "./contexts/SavedJobsContext";
+import { SupabaseProvider } from "./lib/SupabaseContext";
+import { Toaster } from "./components/ui/toaster";
+import NotificationCenter from "./components/NotificationCenter";
 
 // Lazy loaded components
 const Home = lazy(() => import("./components/home"));
@@ -58,6 +61,7 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
+          <Route path="/notifications" element={<div className="p-10"><NotificationCenter /></div>} />
         </Routes>
         {import.meta.env.VITE_TEMPO === "true" && useRoutes(tempoRoutes)}
       </>
@@ -67,11 +71,14 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <SavedJobsProvider>
-        <AppRoutes />
-      </SavedJobsProvider>
-    </AuthProvider>
+    <SupabaseProvider>
+      <AuthProvider>
+        <SavedJobsProvider>
+          <AppRoutes />
+          <Toaster />
+        </SavedJobsProvider>
+      </AuthProvider>
+    </SupabaseProvider>
   );
 }
 

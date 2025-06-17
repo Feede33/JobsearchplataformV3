@@ -53,6 +53,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import NotificationCenter from './NotificationCenter';
 
 interface Application {
   id: string;
@@ -426,6 +427,9 @@ const UserProfileSection = ({
               Back to Jobs
             </Button>
             <h1 className="text-2xl font-bold text-primary">My Profile</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <NotificationCenter />
           </div>
         </div>
       </header>

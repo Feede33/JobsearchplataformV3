@@ -28,8 +28,11 @@ import {
   DollarSignIcon,
   MapPinIcon,
   ShareIcon,
+  FileText,
 } from "lucide-react";
 import jobDetails from "@/data/jobDetails";
+import ResumeAnalyzer from "./ResumeAnalyzer";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface JobDetailProps {
   jobId?: string;
@@ -42,6 +45,7 @@ interface ApplicationFormProps {
   jobTitle: string;
   company: string;
   onSubmit: () => void;
+  resumeAnalysisResult?: any;
 }
 
 // Simple ApplicationForm component since we can't import it properly
@@ -50,6 +54,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
   jobTitle,
   company,
   onSubmit,
+  resumeAnalysisResult,
 }) => {
   return (
     <div className="space-y-4 py-4">
@@ -60,6 +65,26 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({
         <p className="text-sm text-muted-foreground">
           Please fill out the form below to apply for this position.
         </p>
+        
+        {resumeAnalysisResult && (
+          <div className="mt-2 p-3 bg-muted rounded-md">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="h-4 w-4" />
+              <span className="font-medium">Análisis de CV</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm">Compatibilidad:</span>
+              <Badge 
+                variant={resumeAnalysisResult.score >= 80 ? "secondary" : 
+                       resumeAnalysisResult.score >= 60 ? "outline" : "destructive"}
+                className={resumeAnalysisResult.score >= 80 ? "bg-green-100 text-green-800" : 
+                          resumeAnalysisResult.score >= 60 ? "bg-amber-100 text-amber-800" : ""}
+              >
+                {resumeAnalysisResult.score}%
+              </Badge>
+            </div>
+          </div>
+        )}
       </div>
       <div className="grid gap-4">
         <div className="grid gap-2">
@@ -119,6 +144,8 @@ const JobDetailView: React.FC<JobDetailProps> = ({
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [job, setJob] = useState<any>(null);
+  const [resumeAnalysisResult, setResumeAnalysisResult] = useState<any | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("application");
 
   useEffect(() => {
     // Usar el ID de la URL o el proporcionado como prop
@@ -141,6 +168,11 @@ const JobDetailView: React.FC<JobDetailProps> = ({
 
   const handleApplyClick = () => {
     setShowApplicationForm(true);
+  };
+
+  const handleAnalysisComplete = (result: any) => {
+    setResumeAnalysisResult(result);
+    setActiveTab("application");
   };
 
   const formatDate = (dateString: string) => {
@@ -302,7 +334,7 @@ const JobDetailView: React.FC<JobDetailProps> = ({
               <DialogTrigger asChild>
                 <Button onClick={handleApplyClick}>Apply Now</Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px]">
+              <DialogContent className="sm:max-w-[800px]">
                 <DialogHeader>
                   <DialogTitle>Apply for {job.title}</DialogTitle>
                   <DialogDescription>
@@ -310,15 +342,33 @@ const JobDetailView: React.FC<JobDetailProps> = ({
                     position at {job.company}.
                   </DialogDescription>
                 </DialogHeader>
-                <ApplicationForm
-                  jobId={job.id}
-                  jobTitle={job.title}
-                  company={job.company}
-                  onSubmit={() => {
-                    onApply(job.id);
-                    setShowApplicationForm(false);
-                  }}
-                />
+                
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-4">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="analyze">Analizar CV</TabsTrigger>
+                    <TabsTrigger value="application">Formulario de aplicación</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="analyze" className="mt-4">
+                    <ResumeAnalyzer 
+                      jobData={job}
+                      onComplete={handleAnalysisComplete}
+                    />
+                  </TabsContent>
+                  
+                  <TabsContent value="application" className="mt-4">
+                    <ApplicationForm
+                      jobId={job.id}
+                      jobTitle={job.title}
+                      company={job.company}
+                      resumeAnalysisResult={resumeAnalysisResult}
+                      onSubmit={() => {
+                        onApply(job.id);
+                        setShowApplicationForm(false);
+                      }}
+                    />
+                  </TabsContent>
+                </Tabs>
               </DialogContent>
             </Dialog>
           </div>

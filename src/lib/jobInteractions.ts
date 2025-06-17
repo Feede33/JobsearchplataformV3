@@ -201,7 +201,7 @@ export const uploadResume = async (userId: string, file: File): Promise<{ succes
  * Aplica a un trabajo
  */
 export const applyToJob = async (
-  userId: string, 
+  userId: string,
   jobId: string | number,
   applicationData?: {
     coverLetter?: string;
@@ -262,18 +262,27 @@ export const applyToJob = async (
     }
 
     let result;
+    let applicationId;
     
     // Si ya existe, actualizar
     if (existingApplication) {
       result = await supabase
         .from("job_applications")
         .update(applicationDataToSave)
-        .eq("id", existingApplication.id);
+        .eq("id", existingApplication.id)
+        .select();
+      
+      applicationId = existingApplication.id;
     } else {
       // Si no existe, insertar nuevo
       result = await supabase
         .from("job_applications")
-        .insert([applicationDataToSave]);
+        .insert([applicationDataToSave])
+        .select();
+      
+      if (result.data && result.data.length > 0) {
+        applicationId = result.data[0].id;
+      }
     }
 
     const { error } = result;
@@ -296,6 +305,26 @@ export const applyToJob = async (
       await trackJobInteraction(userId, numericJobId.toString(), 'apply');
     } catch (e) {
       console.warn("No se pudo registrar la interacción para recomendaciones", e);
+    }
+
+    // Crear notificación de aplicación exitosa si es una nueva aplicación
+    if (!existingApplication) {
+      try {
+        await createNotification(
+          userId,
+          'application_submitted',
+          'Aplicación enviada con éxito',
+          `Has aplicado correctamente al puesto de ${applicationData?.jobData?.title || 'trabajo'} en ${applicationData?.jobData?.company || 'la empresa'}.`,
+          { 
+            jobId: numericJobId,
+            applicationId,
+            job: applicationData?.jobData
+          }
+        );
+      } catch (notifError) {
+        console.error("Error al crear notificación:", notifError);
+        // No interrumpimos el flujo si falla la notificación
+      }
     }
 
     return { 
@@ -411,4 +440,109 @@ export const getUserApplications = async (userId: string): Promise<any[]> => {
     console.error("Error al obtener aplicaciones:", error);
     return [];
   }
+};
+
+/**
+ * Crea una nueva notificación para un usuario
+ */
+export const createNotification = async (
+  userId: string,
+  type: string,
+  title: string,
+  message: string,
+  data?: any
+) => {
+  try {
+    // Convertir el jobId a número si viene como string
+    if (data?.jobId && typeof data.jobId === 'string') {
+      data.jobId = parseInt(data.jobId, 10);
+    }
+
+    const { data: notification, error } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: userId,
+        type,
+        title,
+        message,
+        data,
+        is_read: false,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error al crear notificación:', error);
+      return { success: false, error };
+    }
+
+    return { success: true, notification };
+  } catch (err) {
+    console.error('Error inesperado al crear notificación:', err);
+    return { success: false, error: err };
+  }
+};
+
+/**
+ * Crea una notificación cuando un trabajo coincide con las habilidades del usuario
+ */
+export const notifyJobMatch = async (userId: string, job: any) => {
+  return createNotification(
+    userId,
+    'job_match',
+    '¡Nuevo trabajo que coincide con tu perfil!',
+    `Encontramos un nuevo trabajo de ${job.title} en ${job.company} que coincide con tus habilidades.`,
+    { jobId: job.id, job }
+  );
+};
+
+/**
+ * Crea una notificación cuando cambia el estado de una aplicación
+ */
+export const notifyApplicationStatusChange = async (userId: string, application: any, newStatus: string) => {
+  let message = '';
+  
+  switch (newStatus) {
+    case 'reviewed':
+      message = `Tu aplicación para ${application.job_data?.title || 'el trabajo'} ha sido revisada.`;
+      break;
+    case 'interview':
+      message = `¡Felicidades! Has sido seleccionado para una entrevista para ${application.job_data?.title || 'el trabajo'}.`;
+      break;
+    case 'rejected':
+      message = `Lo sentimos, tu aplicación para ${application.job_data?.title || 'el trabajo'} no ha sido seleccionada.`;
+      break;
+    case 'accepted':
+      message = `¡Felicidades! Tu aplicación para ${application.job_data?.title || 'el trabajo'} ha sido aceptada.`;
+      break;
+    default:
+      message = `El estado de tu aplicación para ${application.job_data?.title || 'el trabajo'} ha cambiado a ${newStatus}.`;
+  }
+  
+  return createNotification(
+    userId,
+    'application_status',
+    'Actualización de tu aplicación',
+    message,
+    { 
+      jobId: application.job_id,
+      applicationId: application.id,
+      status: newStatus,
+      job: application.job_data
+    }
+  );
+};
+
+/**
+ * Crea una notificación para nuevos trabajos en categorías de interés
+ */
+export const notifyNewJobInCategory = async (userId: string, job: any, category: string) => {
+  return createNotification(
+    userId,
+    'new_job',
+    `Nuevo trabajo en ${category}`,
+    `Se ha publicado un nuevo trabajo de ${job.title} en ${job.company} en la categoría ${category}.`,
+    { jobId: job.id, job, category }
+  );
 }; 

@@ -78,6 +78,41 @@ export interface Database {
           updated_at?: string | null;
         };
       };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: string;
+          title: string;
+          message: string;
+          data: Json | null;
+          is_read: boolean;
+          created_at: string;
+          read_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: string;
+          title: string;
+          message: string;
+          data?: Json | null;
+          is_read?: boolean;
+          created_at?: string;
+          read_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          type?: string;
+          title?: string;
+          message?: string;
+          data?: Json | null;
+          is_read?: boolean;
+          created_at?: string;
+          read_at?: string | null;
+        };
+      };
     };
   };
 }

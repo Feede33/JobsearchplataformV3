@@ -1,50 +1,49 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getPersonalizedJobRecommendations } from "@/lib/jobRecommendations";
 import { useAuth } from "@/contexts/AuthContext";
 import JobListingCard from "./JobListingCard";
-import { getPersonalizedJobRecommendations } from "@/lib/jobRecommendations";
-import { Card, CardContent } from "@/components/ui/card";
-import { useNavigate } from "react-router-dom";
-import { Sparkles } from "lucide-react";
+import { Skeleton } from "./ui/skeleton";
+import { Button } from "./ui/button";
+import { ArrowRight } from "lucide-react";
 
 interface PersonalizedJobsSectionProps {
+  title?: string;
+  subtitle?: string;
   limit?: number;
 }
 
-const PersonalizedJobsSection = ({ limit = 6 }: PersonalizedJobsSectionProps) => {
-  const { user, isAuthenticated } = useAuth();
-  const [personalizedJobs, setPersonalizedJobs] = useState<any[]>([]);
+const PersonalizedJobsSection = ({
+  title = "Trabajos recomendados para ti",
+  subtitle = "Basado en tu perfil y búsquedas recientes",
+  limit = 4,
+}: PersonalizedJobsSectionProps) => {
+  const [jobs, setJobs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const loadPersonalizedJobs = async () => {
+    const loadRecommendations = async () => {
       setIsLoading(true);
-      
-      // Opciones de personalización
-      const options: any = {
-        limit,
-      };
-      
-      // Si el usuario está autenticado, añadir su ID y ubicación
-      if (isAuthenticated && user) {
-        options.userId = user.id;
-        
-        // Usar información del usuario si está disponible
-        // Usamos una aserción de tipo para acceder a posibles metadatos
-        const userWithMetadata = user as any;
-        const userMetadata = userWithMetadata.user_metadata || {};
-        
-        options.location = userMetadata.location || "";
-        options.skills = userMetadata.skills || [];
+      try {
+        // Usar la nueva versión de la función con el parámetro para crear notificaciones
+        const recommendations = await getPersonalizedJobRecommendations(
+          user?.id, 
+          limit,
+          true // Activar creación de notificaciones
+        );
+        setJobs(recommendations);
+      } catch (error) {
+        console.error("Error al cargar recomendaciones:", error);
+        setJobs([]);
+      } finally {
+        setIsLoading(false);
       }
-      
-      const jobs = await getPersonalizedJobRecommendations(options);
-      setPersonalizedJobs(jobs);
-      setIsLoading(false);
     };
 
-    loadPersonalizedJobs();
-  }, [isAuthenticated, user, limit]);
+    loadRecommendations();
+  }, [user, limit]);
 
   // Función para manejar el clic en un trabajo
   const handleJobClick = (job: any) => {
@@ -56,63 +55,77 @@ const PersonalizedJobsSection = ({ limit = 6 }: PersonalizedJobsSectionProps) =>
     });
   };
 
-  return (
-    <div className="mb-12">
-      <div className="flex items-center gap-2 mb-6">
-        <Sparkles className="h-5 w-5 text-primary" />
-        <h2 className="text-2xl font-bold">
-          {isAuthenticated ? "Recomendado para ti" : "Trabajos destacados"}
-        </h2>
-      </div>
-      
-      <p className="text-muted-foreground mb-6">
-        {isAuthenticated
-          ? "Estas ofertas han sido seleccionadas específicamente para tu perfil y experiencia"
-          : "Explora estas oportunidades destacadas basadas en las tendencias actuales del mercado"}
-      </p>
-
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  if (isLoading) {
+    return (
+      <div className="mb-10">
+        <h2 className="text-2xl font-bold mb-2">{title}</h2>
+        <p className="text-muted-foreground mb-6">{subtitle}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array(limit)
             .fill(0)
             .map((_, i) => (
-              <Card key={i} className="w-full h-[220px] animate-pulse">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="h-11 w-11 rounded-md bg-muted"></div>
-                    <div className="space-y-2">
-                      <div className="h-4 w-32 bg-muted rounded"></div>
-                      <div className="h-3 w-24 bg-muted rounded"></div>
-                    </div>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    <div className="h-3 w-full bg-muted rounded"></div>
-                    <div className="h-3 w-full bg-muted rounded"></div>
-                    <div className="h-3 w-3/4 bg-muted rounded"></div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={i} className="border rounded-lg p-4">
+                <Skeleton className="h-6 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-1/2 mb-4" />
+                <Skeleton className="h-20 w-full mb-4" />
+                <div className="flex justify-between">
+                  <Skeleton className="h-8 w-1/3" />
+                  <Skeleton className="h-8 w-1/3" />
+                </div>
+              </div>
             ))}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {personalizedJobs.map((job) => (
-            <JobListingCard
-              key={job.id}
-              id={job.id}
-              jobTitle={job.title}
-              companyName={job.company}
-              companyLogo={job.logo}
-              location={job.location}
-              salaryRange={job.salary}
-              employmentType={job.type}
-              keyRequirements={job.requirements}
-              postedDate={job.posted}
-              onClick={() => handleJobClick(job)}
-            />
-          ))}
+      </div>
+    );
+  }
+
+  // No mostrar nada si no hay trabajos recomendados
+  if (jobs.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mb-10">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-2xl font-bold mb-2">{title}</h2>
+          <p className="text-muted-foreground">{subtitle}</p>
         </div>
-      )}
+        <Button 
+          variant="outline" 
+          onClick={() => navigate("/search-results")}
+          className="hidden md:flex items-center gap-2"
+        >
+          Ver todos <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {jobs.map((job) => (
+          <JobListingCard 
+            key={job.id} 
+            id={job.id}
+            companyLogo={job.logo || ''}
+            jobTitle={job.title}
+            companyName={job.company}
+            location={job.location || ''}
+            salaryRange={job.salary || ''}
+            employmentType={job.type || 'Full-time'}
+            postedDate={job.posted_date || ''}
+            onClick={() => handleJobClick(job)}
+          />
+        ))}
+      </div>
+      
+      <div className="mt-6 flex justify-center md:hidden">
+        <Button 
+          variant="outline" 
+          onClick={() => navigate("/search-results")}
+          className="w-full"
+        >
+          Ver todos los trabajos
+        </Button>
+      </div>
     </div>
   );
 };

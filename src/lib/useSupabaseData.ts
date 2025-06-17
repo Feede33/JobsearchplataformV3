@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from './supabase';
 import type { Database } from '../types/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 // Tipos para Jobs
 type Job = Database['public']['Tables']['jobs']['Row'];
@@ -321,5 +322,197 @@ export const useProfiles = () => {
     getProfileByUserId,
     updateProfile,
     createProfile,
+  };
+};
+
+export const useNotifications = () => {
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+  const { user } = useAuth();
+
+  // Cargar notificaciones del usuario
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      setNotifications(data || []);
+      
+      // Calcular número de notificaciones no leídas
+      const unread = data ? data.filter(n => !n.is_read).length : 0;
+      setUnreadCount(unread);
+      
+      return data;
+    } catch (err) {
+      console.error('Error al cargar notificaciones:', err);
+      setError(err instanceof Error ? err : new Error('Error desconocido al cargar notificaciones'));
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  // Marcar una notificación como leída
+  const markAsRead = useCallback(async (notificationId: string) => {
+    if (!user) return null;
+    
+    try {
+      setError(null);
+      
+      const { data, error } = await supabase
+        .from('notifications')
+        .update({
+          is_read: true,
+          read_at: new Date().toISOString()
+        })
+        .eq('id', notificationId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Actualizar el estado local
+      setNotifications(prev => 
+        prev.map(n => n.id === notificationId ? { ...n, is_read: true, read_at: new Date().toISOString() } : n)
+      );
+      
+      // Actualizar contador de no leídas
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      
+      return data;
+    } catch (err) {
+      console.error('Error al marcar notificación como leída:', err);
+      setError(err instanceof Error ? err : new Error('Error desconocido al actualizar notificación'));
+      return null;
+    }
+  }, [user]);
+
+  // Marcar todas las notificaciones como leídas
+  const markAllAsRead = useCallback(async () => {
+    if (!user) return null;
+    
+    try {
+      setError(null);
+      
+      const { data, error } = await supabase
+        .from('notifications')
+        .update({
+          is_read: true,
+          read_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .eq('is_read', false)
+        .select();
+      
+      if (error) throw error;
+      
+      // Actualizar el estado local
+      setNotifications(prev => 
+        prev.map(n => ({ ...n, is_read: true, read_at: new Date().toISOString() }))
+      );
+      
+      // Resetear contador de no leídas
+      setUnreadCount(0);
+      
+      return data;
+    } catch (err) {
+      console.error('Error al marcar todas las notificaciones como leídas:', err);
+      setError(err instanceof Error ? err : new Error('Error desconocido al actualizar notificaciones'));
+      return null;
+    }
+  }, [user]);
+
+  // Eliminar una notificación
+  const deleteNotification = useCallback(async (notificationId: string) => {
+    if (!user) return false;
+    
+    try {
+      setError(null);
+      
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
+      // Actualizar el estado local
+      const deletedNotification = notifications.find(n => n.id === notificationId);
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+      
+      // Actualizar contador si la notificación eliminada no estaba leída
+      if (deletedNotification && !deletedNotification.is_read) {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('Error al eliminar notificación:', err);
+      setError(err instanceof Error ? err : new Error('Error desconocido al eliminar notificación'));
+      return false;
+    }
+  }, [user, notifications]);
+
+  // Cargar notificaciones al montar el componente o cuando cambie el usuario
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+    }
+  }, [user, fetchNotifications]);
+
+  // Configurar suscripción en tiempo real para nuevas notificaciones
+  useEffect(() => {
+    if (!user) return;
+
+    // Suscribirse a cambios en la tabla de notificaciones para este usuario
+    const subscription = supabase
+      .channel('notifications_channel')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          // Añadir la nueva notificación al estado
+          setNotifications(prev => [payload.new, ...prev]);
+          
+          // Incrementar contador de no leídas
+          setUnreadCount(prev => prev + 1);
+        }
+      )
+      .subscribe();
+
+    // Limpiar suscripción al desmontar
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [user]);
+
+  return {
+    notifications,
+    unreadCount,
+    loading,
+    error,
+    fetchNotifications,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification
   };
 }; 

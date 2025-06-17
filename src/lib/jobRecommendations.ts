@@ -31,64 +31,121 @@ interface RecommendationOptions {
  * Obtiene trabajos recomendados personalizados para un usuario
  */
 export const getPersonalizedJobRecommendations = async (
-  options: RecommendationOptions = {}
-): Promise<JobRecommendation[]> => {
+  userId?: string,
+  limit: number = 6,
+  createNotifications: boolean = false
+): Promise<any[]> => {
   try {
-    const { userId, location, skills, limit = 6, categories } = options;
-    
-    // Si hay un userId, intentar usar la función de recomendación personalizada
-    if (userId) {
-      try {
-        const { data, error } = await supabase
-          .rpc('get_recommended_jobs', { 
-            p_user_id: userId,
-            p_limit: limit
-          });
-        
-        if (data && !error) {
-          console.log('Usando recomendaciones personalizadas de Supabase');
-          return data.map(job => formatJobData(job));
-        }
-      } catch (err) {
-        console.warn('Error al obtener recomendaciones personalizadas:', err);
-      }
-    }
-    
-    // Intentar obtener datos de la tabla jobs
-    try {
-      let query = supabase.from('jobs').select('*');
-      
-      // Aplicar filtros si existen
-      if (location) {
-        query = query.ilike('location', `%${location}%`);
-      }
-      
-      if (categories && categories.length > 0) {
-        query = query.in('category', categories);
-      }
-      
-      // Ordenar por destacados primero
-      query = query.order('is_featured', { ascending: false })
-                   .order('created_at', { ascending: false });
-      
-      // Obtener resultados
-      const { data, error } = await query.limit(limit);
-      
-      if (data && !error && data.length > 0) {
-        console.log('Usando datos de la tabla jobs de Supabase');
-        return data.map(job => formatJobData(job));
-      }
-    } catch (err) {
-      console.warn('Error al consultar tabla jobs:', err);
+    // Si no hay usuario, devolver trabajos destacados genéricos
+    if (!userId) {
+      return await getFeaturedJobs(limit);
     }
 
-    // Si no hay datos reales o hay error, usar datos mock como fallback
-    console.log('Usando datos mock para recomendaciones');
-    const mockRecommendations = generateMockRecommendations(userId, location, skills, categories);
-    return mockRecommendations.slice(0, limit);
+    // Obtener perfil de usuario para ver sus habilidades e intereses
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    // Obtener historial de interacciones del usuario
+    const { data: interactions } = await supabase
+      .from('user_events')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('event_type', 'job_interaction')
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    // Extraer IDs de trabajos con los que el usuario ha interactuado
+    const interactedJobIds = interactions
+      ? interactions.map(i => i.event_details?.job_id).filter(Boolean)
+      : [];
+
+    // Obtener categorías de trabajos con las que el usuario ha interactuado
+    const { data: savedJobs } = await supabase
+      .from('saved_jobs')
+      .select('job_data')
+      .eq('user_id', userId);
+
+    const categories = savedJobs
+      ? [...new Set(savedJobs.map(job => job.job_data?.category).filter(Boolean))]
+      : [];
+
+    // Obtener trabajos recomendados basados en categorías de interés
+    let recommendedJobs: any[] = [];
+    
+    if (categories.length > 0) {
+      // Obtener trabajos de categorías similares
+      const { data: categoryJobs } = await supabase
+        .from('jobs')
+        .select('*')
+        .in('category', categories)
+        .order('score', { ascending: false })
+        .limit(limit * 2);
+        
+      if (categoryJobs) {
+        recommendedJobs = categoryJobs;
+      }
+    }
+
+    // Si no hay suficientes trabajos recomendados por categoría, obtener trabajos populares
+    if (recommendedJobs.length < limit) {
+      const { data: popularJobs } = await supabase
+        .from('jobs')
+        .select('*')
+        .order('score', { ascending: false })
+        .limit(limit * 2);
+        
+      if (popularJobs) {
+        // Combinar con los trabajos ya recomendados, evitando duplicados
+        const existingIds = recommendedJobs.map(job => job.id);
+        const newJobs = popularJobs.filter(job => !existingIds.includes(job.id));
+        recommendedJobs = [...recommendedJobs, ...newJobs];
+      }
+    }
+
+    // Filtrar trabajos con los que el usuario ya ha interactuado
+    recommendedJobs = recommendedJobs.filter(job => !interactedJobIds.includes(job.id));
+
+    // Limitar al número solicitado
+    recommendedJobs = recommendedJobs.slice(0, limit);
+
+    // Si se solicita crear notificaciones y hay trabajos recomendados
+    if (createNotifications && recommendedJobs.length > 0) {
+      try {
+        // Importar la función para crear notificaciones
+        const { createNotification, notifyJobMatch } = await import('./jobInteractions');
+        
+        // Obtener las notificaciones existentes para no duplicar
+        const { data: existingNotifications } = await supabase
+          .from('notifications')
+          .select('data')
+          .eq('user_id', userId)
+          .eq('type', 'job_match')
+          .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()); // Últimos 7 días
+        
+        // Extraer IDs de trabajos ya notificados
+        const notifiedJobIds = existingNotifications 
+          ? existingNotifications.map(n => n.data?.jobId).filter(Boolean)
+          : [];
+        
+        // Crear notificaciones solo para trabajos que no han sido notificados recientemente
+        for (const job of recommendedJobs.slice(0, 3)) { // Limitar a 3 notificaciones máximo
+          if (!notifiedJobIds.includes(job.id)) {
+            await notifyJobMatch(userId, job);
+          }
+        }
+      } catch (notifError) {
+        console.error('Error al crear notificaciones de trabajos recomendados:', notifError);
+        // No interrumpimos el flujo si fallan las notificaciones
+      }
+    }
+
+    return recommendedJobs;
   } catch (error) {
-    console.error("Error al obtener recomendaciones:", error);
-    return [];
+    console.error('Error al obtener recomendaciones personalizadas:', error);
+    return await getFeaturedJobs(limit);
   }
 };
 
@@ -741,5 +798,29 @@ export const trackJobInteraction = async (
     ]);
   } catch (error) {
     console.error("Error al registrar interacción:", error);
+  }
+};
+
+/**
+ * Obtiene trabajos destacados
+ */
+export const getFeaturedJobs = async (limit: number = 6): Promise<any[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('is_featured', true)
+      .order('score', { ascending: false })
+      .limit(limit);
+    
+    if (error) {
+      console.error('Error al obtener trabajos destacados:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error inesperado al obtener trabajos destacados:', error);
+    return [];
   }
 }; 

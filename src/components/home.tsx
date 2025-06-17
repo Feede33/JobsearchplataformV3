@@ -31,6 +31,7 @@ import JobCategorySection from "./JobCategorySection";
 import TrendingJobsSection from "./TrendingJobsSection";
 import { getPopularJobCategories } from "@/lib/jobRecommendations";
 import { supabase } from "@/lib/supabase";
+import NotificationCenter from './NotificationCenter';
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -185,6 +186,7 @@ const HomePage = () => {
           <div className="flex items-center space-x-4">
             {isAuthenticated ? (
               <>
+                <NotificationCenter />
                 <Button
                   variant="outline"
                   size="sm"
