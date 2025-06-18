@@ -9,9 +9,9 @@ type JobInsert = Database['public']['Tables']['jobs']['Insert'];
 type JobUpdate = Database['public']['Tables']['jobs']['Update'];
 
 // Tipos para Applications
-type Application = Database['public']['Tables']['applications']['Row'];
-type ApplicationInsert = Database['public']['Tables']['applications']['Insert'];
-type ApplicationUpdate = Database['public']['Tables']['applications']['Update'];
+type Application = Database['public']['Tables']['job_applications']['Row'];
+type ApplicationInsert = Database['public']['Tables']['job_applications']['Insert'];
+type ApplicationUpdate = Database['public']['Tables']['job_applications']['Update'];
 
 // Tipos para Profiles
 type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -152,7 +152,7 @@ export const useApplications = () => {
       setError(null);
       
       const { data, error } = await supabase
-        .from('applications')
+        .from('job_applications')
         .select('*, jobs(*)')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
@@ -174,7 +174,7 @@ export const useApplications = () => {
       setError(null);
       
       const { data, error } = await supabase
-        .from('applications')
+        .from('job_applications')
         .select('*, profiles(*)')
         .eq('job_id', jobId)
         .order('created_at', { ascending: false });
@@ -196,7 +196,7 @@ export const useApplications = () => {
       setError(null);
       
       const { data, error } = await supabase
-        .from('applications')
+        .from('job_applications')
         .insert(application)
         .select()
         .single();
@@ -212,14 +212,14 @@ export const useApplications = () => {
     }
   }, []);
 
-  const updateApplicationStatus = useCallback(async (id: string, status: string) => {
+  const updateApplication = useCallback(async (id: string, updates: ApplicationUpdate) => {
     try {
       setLoading(true);
       setError(null);
       
       const { data, error } = await supabase
-        .from('applications')
-        .update({ status })
+        .from('job_applications')
+        .update(updates)
         .eq('id', id)
         .select()
         .single();
@@ -241,7 +241,7 @@ export const useApplications = () => {
     getApplicationsByUserId,
     getApplicationsByJobId,
     createApplication,
-    updateApplicationStatus,
+    updateApplication,
   };
 };
 
@@ -333,18 +333,44 @@ export const useNotifications = () => {
   const { user } = useAuth();
 
   // Cargar notificaciones del usuario
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (options?: {
+    type?: string;
+    limit?: number;
+    offset?: number;
+    orderBy?: string;
+    orderDirection?: 'asc' | 'desc';
+  }) => {
     if (!user) return;
     
     try {
       setLoading(true);
       setError(null);
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('notifications')
         .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .eq('user_id', user.id);
+      
+      // Aplicar filtro por tipo si se especifica
+      if (options?.type && options.type !== 'all') {
+        query = query.eq('type', options.type);
+      }
+      
+      // Aplicar ordenación
+      const orderBy = options?.orderBy || 'created_at';
+      const orderDirection = options?.orderDirection || 'desc';
+      query = query.order(orderBy, { ascending: orderDirection === 'asc' });
+      
+      // Aplicar paginación si se especifica
+      if (options?.limit) {
+        query = query.limit(options.limit);
+      }
+      
+      if (options?.offset) {
+        query = query.range(options.offset, options.offset + (options.limit || 20) - 1);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       
@@ -361,6 +387,34 @@ export const useNotifications = () => {
       return null;
     } finally {
       setLoading(false);
+    }
+  }, [user]);
+
+  // Obtener conteo de notificaciones por tipo
+  const getNotificationCountByType = useCallback(async () => {
+    if (!user) return {};
+    
+    try {
+      // En lugar de usar group by, que no está soportado, obtenemos todas las notificaciones
+      // y hacemos el conteo manualmente
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
+      // Contar manualmente por tipo
+      const counts = (data || []).reduce((acc, item) => {
+        const type = item.type || 'other';
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      return counts;
+    } catch (err) {
+      console.error('Error al obtener conteo de notificaciones:', err);
+      return {};
     }
   }, [user]);
 
@@ -401,31 +455,46 @@ export const useNotifications = () => {
   }, [user]);
 
   // Marcar todas las notificaciones como leídas
-  const markAllAsRead = useCallback(async () => {
+  const markAllAsRead = useCallback(async (type?: string) => {
     if (!user) return null;
     
     try {
       setError(null);
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('notifications')
         .update({
           is_read: true,
           read_at: new Date().toISOString()
         })
         .eq('user_id', user.id)
-        .eq('is_read', false)
-        .select();
+        .eq('is_read', false);
+      
+      // Si se especifica un tipo, filtrar por ese tipo
+      if (type && type !== 'all') {
+        query = query.eq('type', type);
+      }
+      
+      const { data, error } = await query.select();
       
       if (error) throw error;
       
       // Actualizar el estado local
       setNotifications(prev => 
-        prev.map(n => ({ ...n, is_read: true, read_at: new Date().toISOString() }))
+        prev.map(n => {
+          if (!n.is_read && (!type || type === 'all' || n.type === type)) {
+            return { ...n, is_read: true, read_at: new Date().toISOString() };
+          }
+          return n;
+        })
       );
       
-      // Resetear contador de no leídas
-      setUnreadCount(0);
+      // Recalcular contador de no leídas
+      const newUnreadCount = notifications.filter(n => 
+        !n.is_read && (type && type !== 'all' ? n.type !== type : false)
+      ).length;
+      
+      setUnreadCount(newUnreadCount);
       
       return data;
     } catch (err) {
@@ -433,7 +502,7 @@ export const useNotifications = () => {
       setError(err instanceof Error ? err : new Error('Error desconocido al actualizar notificaciones'));
       return null;
     }
-  }, [user]);
+  }, [user, notifications]);
 
   // Eliminar una notificación
   const deleteNotification = useCallback(async (notificationId: string) => {
@@ -467,10 +536,57 @@ export const useNotifications = () => {
     }
   }, [user, notifications]);
 
+  // Eliminar todas las notificaciones (con filtro opcional por tipo)
+  const deleteAllNotifications = useCallback(async (type?: string) => {
+    if (!user) return false;
+    
+    try {
+      setError(null);
+      
+      let query = supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', user.id);
+      
+      // Si se especifica un tipo, filtrar por ese tipo
+      if (type && type !== 'all') {
+        query = query.eq('type', type);
+      }
+      
+      const { error } = await query;
+      
+      if (error) throw error;
+      
+      // Actualizar el estado local
+      if (type && type !== 'all') {
+        const remainingNotifications = notifications.filter(n => n.type !== type);
+        setNotifications(remainingNotifications);
+        
+        // Recalcular contador de no leídas
+        const newUnreadCount = remainingNotifications.filter(n => !n.is_read).length;
+        setUnreadCount(newUnreadCount);
+      } else {
+        // Si no hay filtro, eliminar todas
+        setNotifications([]);
+        setUnreadCount(0);
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('Error al eliminar notificaciones:', err);
+      setError(err instanceof Error ? err : new Error('Error desconocido al eliminar notificaciones'));
+      return false;
+    }
+  }, [user, notifications]);
+
   // Cargar notificaciones al montar el componente o cuando cambie el usuario
   useEffect(() => {
     if (user) {
       fetchNotifications();
+    } else {
+      // Limpiar notificaciones si no hay usuario
+      setNotifications([]);
+      setUnreadCount(0);
     }
   }, [user, fetchNotifications]);
 
@@ -511,8 +627,10 @@ export const useNotifications = () => {
     loading,
     error,
     fetchNotifications,
+    getNotificationCountByType,
     markAsRead,
     markAllAsRead,
-    deleteNotification
+    deleteNotification,
+    deleteAllNotifications
   };
 }; 

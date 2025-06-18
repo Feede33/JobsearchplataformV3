@@ -3,15 +3,23 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-import { CheckCircle, AlertCircle, XCircle, Loader2, Database } from "lucide-react";
+import { CheckCircle, AlertCircle, XCircle, Loader2, Database, Bell } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { generateTestNotifications } from "@/lib/jobInteractions";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Separator } from "./ui/separator";
+import { toast } from "./ui/use-toast";
 
 const SupabaseDiagnostic = () => {
+  const { user } = useAuth();
   const [diagResults, setDiagResults] = useState<{
     connected: boolean;
     tablesExist: {
       saved_jobs: boolean;
       job_applications: boolean;
       jobs: boolean;
+      notifications: boolean;
     };
     bucketsExist: {
       resumes: boolean;
@@ -25,6 +33,7 @@ const SupabaseDiagnostic = () => {
       saved_jobs: false,
       job_applications: false,
       jobs: false,
+      notifications: false,
     },
     bucketsExist: {
       resumes: false,
@@ -47,6 +56,15 @@ const SupabaseDiagnostic = () => {
     executing: false,
     success: false,
     error: null
+  });
+
+  // Estado para la generación de notificaciones de prueba
+  const [notificationGeneration, setNotificationGeneration] = useState({
+    count: 5,
+    generating: false,
+    success: false,
+    error: null,
+    message: ''
   });
 
   // Script SQL para crear tablas
@@ -139,6 +157,40 @@ ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Jobs are viewable by everyone" 
   ON jobs FOR SELECT 
   USING (true);
+
+-- Tabla para notificaciones de usuarios
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  type VARCHAR(50) NOT NULL,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  data JSONB DEFAULT NULL,
+  is_read BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  read_at TIMESTAMP WITH TIME ZONE DEFAULT NULL
+);
+
+-- Habilitar RLS para la tabla de notificaciones
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+
+-- Política para permitir a los usuarios ver solo sus propias notificaciones
+CREATE POLICY "Users can view their own notifications" 
+  ON notifications FOR SELECT 
+  USING (auth.uid() = user_id);
+
+-- Política para permitir a los usuarios marcar como leídas sus propias notificaciones
+CREATE POLICY "Users can update their own notifications" 
+  ON notifications FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+-- Política para permitir a los usuarios eliminar sus propias notificaciones
+CREATE POLICY "Users can delete their own notifications" 
+  ON notifications FOR DELETE 
+  USING (auth.uid() = user_id);
+
+-- Índice para mejorar el rendimiento de consultas de notificaciones no leídas
+CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read);
 `;
 
   const runDiagnostic = async () => {
@@ -194,6 +246,18 @@ CREATE POLICY "Jobs are viewable by everyone"
       }
       const { error: jobsError } = jobsResult;
 
+      // Verificar tabla notifications
+      let notificationsResult;
+      try {
+        notificationsResult = await supabase.from("notifications").select("id").limit(1);
+      } catch (err) {
+        notificationsResult = {
+          data: null,
+          error: { message: "Error al verificar notifications" },
+        };
+      }
+      const { error: notificationsError } = notificationsResult;
+
       // Verificar buckets
       let resumesBucketResult;
       try {
@@ -223,6 +287,7 @@ CREATE POLICY "Jobs are viewable by everyone"
           saved_jobs: !savedJobsError || savedJobsError.code === "PGRST116",
           job_applications: !jobApplicationsError || jobApplicationsError.code === "PGRST116",
           jobs: !jobsError || jobsError.code === "PGRST116",
+          notifications: !notificationsError || notificationsError.code === "PGRST116",
         },
         bucketsExist: {
           resumes: !resumesError,
@@ -403,221 +468,360 @@ CREATE POLICY "Jobs are viewable by everyone"
     }
   };
 
+  // Función para generar notificaciones de prueba
+  const handleGenerateTestNotifications = async () => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "Debes iniciar sesión para generar notificaciones",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setNotificationGeneration(prev => ({
+      ...prev,
+      generating: true,
+      success: false,
+      error: null,
+      message: ''
+    }));
+
+    try {
+      const result = await generateTestNotifications(user.id, notificationGeneration.count);
+      
+      if (result.success) {
+        setNotificationGeneration(prev => ({
+          ...prev,
+          generating: false,
+          success: true,
+          message: result.message
+        }));
+        
+        toast({
+          title: "Notificaciones generadas",
+          description: result.message,
+        });
+      } else {
+        setNotificationGeneration(prev => ({
+          ...prev,
+          generating: false,
+          error: result.error
+        }));
+        
+        toast({
+          title: "Error",
+          description: "No se pudieron generar las notificaciones",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      setNotificationGeneration(prev => ({
+        ...prev,
+        generating: false,
+        error
+      }));
+      
+      toast({
+        title: "Error",
+        description: "Error inesperado al generar notificaciones",
+        variant: "destructive"
+      });
+    }
+  };
+
   useEffect(() => {
     runDiagnostic();
   }, []);
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>Diagnóstico de Supabase</CardTitle>
-        <CardDescription>
-          Verifica la configuración de tu proyecto Supabase
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {diagResults.loading ? (
-          <div className="flex items-center justify-center p-6">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-2">Ejecutando diagnóstico...</span>
-          </div>
-        ) : (
-          <>
-            {diagResults.error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{diagResults.error}</AlertDescription>
-              </Alert>
-            )}
+    <div className="container mx-auto p-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Database className="mr-2" /> Diagnóstico de Supabase
+          </CardTitle>
+          <CardDescription>
+            Verifica la configuración y el estado de la conexión con Supabase
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Button onClick={runDiagnostic} disabled={diagResults.loading}>
+              {diagResults.loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Ejecutando diagnóstico...
+                </>
+              ) : (
+                "Ejecutar diagnóstico"
+              )}
+            </Button>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b pb-2">
-                <span className="font-medium">Conexión a Supabase:</span>
+            {/* Resultados del diagnóstico */}
+            <div className="mt-4 space-y-2">
+              <h3 className="text-lg font-medium">Resultados del diagnóstico:</h3>
+
+              {/* Conexión */}
+              <div className="flex items-center">
                 {diagResults.connected ? (
-                  <span className="flex items-center text-green-600">
-                    <CheckCircle className="h-5 w-5 mr-1" /> Conectado
-                  </span>
+                  <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
                 ) : (
-                  <span className="flex items-center text-red-600">
-                    <XCircle className="h-5 w-5 mr-1" /> No conectado
-                  </span>
+                  <XCircle className="h-5 w-5 text-red-500 mr-2" />
                 )}
+                <span>Conexión a Supabase: {diagResults.connected ? "OK" : "Error"}</span>
               </div>
 
-              <div className="space-y-2">
-                <h3 className="font-medium">Tablas:</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex items-center justify-between bg-muted p-2 rounded">
-                    <span>saved_jobs</span>
-                    {diagResults.tablesExist.saved_jobs ? (
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-600" />
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between bg-muted p-2 rounded">
-                    <span>job_applications</span>
-                    {diagResults.tablesExist.job_applications ? (
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-600" />
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between bg-muted p-2 rounded">
-                    <span>jobs</span>
-                    {diagResults.tablesExist.jobs ? (
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-600" />
-                    )}
-                  </div>
+              {/* Tablas */}
+              <div className="ml-4 space-y-1">
+                <div className="flex items-center">
+                  {diagResults.tablesExist.saved_jobs ? (
+                    <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-500 mr-2" />
+                  )}
+                  <span>Tabla saved_jobs: {diagResults.tablesExist.saved_jobs ? "Existe" : "No existe"}</span>
+                </div>
+
+                <div className="flex items-center">
+                  {diagResults.tablesExist.job_applications ? (
+                    <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-500 mr-2" />
+                  )}
+                  <span>
+                    Tabla job_applications: {diagResults.tablesExist.job_applications ? "Existe" : "No existe"}
+                  </span>
+                </div>
+
+                <div className="flex items-center">
+                  {diagResults.tablesExist.jobs ? (
+                    <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-500 mr-2" />
+                  )}
+                  <span>Tabla jobs: {diagResults.tablesExist.jobs ? "Existe" : "No existe"}</span>
+                </div>
+
+                <div className="flex items-center">
+                  {diagResults.tablesExist.notifications ? (
+                    <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-500 mr-2" />
+                  )}
+                  <span>Tabla notifications: {diagResults.tablesExist.notifications ? "Existe" : "No existe"}</span>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <h3 className="font-medium">Buckets:</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex items-center justify-between bg-muted p-2 rounded">
-                    <span>resumes</span>
-                    {diagResults.bucketsExist.resumes ? (
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-600" />
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between bg-muted p-2 rounded">
-                    <span>avatars</span>
-                    {diagResults.bucketsExist.avatars ? (
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-600" />
-                    )}
-                  </div>
+              {/* Buckets */}
+              <div className="ml-4 space-y-1">
+                <div className="flex items-center">
+                  {diagResults.bucketsExist.resumes ? (
+                    <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-500 mr-2" />
+                  )}
+                  <span>Bucket resumes: {diagResults.bucketsExist.resumes ? "Existe" : "No existe"}</span>
+                </div>
+
+                <div className="flex items-center">
+                  {diagResults.bucketsExist.avatars ? (
+                    <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-500 mr-2" />
+                  )}
+                  <span>Bucket avatars: {diagResults.bucketsExist.avatars ? "Existe" : "No existe"}</span>
                 </div>
               </div>
+            </div>
 
-              {/* Sección para verificar y arreglar la columna job_data */}
-              {diagResults.tablesExist.job_applications && (
-                <div className="space-y-2 mt-4 border-t pt-4">
-                  <h3 className="font-medium">Verificar columna job_data:</h3>
-                  <div className="bg-muted p-4 rounded">
-                    <p className="text-sm mb-2">
-                      Comprueba si la columna job_data existe en la tabla job_applications.
-                      Esta columna es necesaria para guardar los datos de trabajos aplicados.
-                    </p>
-                    
-                    {columnCheck.checking ? (
-                      <div className="flex items-center text-blue-600">
-                        <Loader2 className="h-5 w-5 animate-spin mr-1" /> 
-                        Verificando...
+            {/* Sección para verificar y arreglar la columna job_data */}
+            {diagResults.tablesExist.job_applications && (
+              <div className="space-y-2 mt-4 border-t pt-4">
+                <h3 className="font-medium">Verificar columna job_data:</h3>
+                <div className="bg-muted p-4 rounded">
+                  <p className="text-sm mb-2">
+                    Comprueba si la columna job_data existe en la tabla job_applications.
+                    Esta columna es necesaria para guardar los datos de trabajos aplicados.
+                  </p>
+                  
+                  {columnCheck.checking ? (
+                    <div className="flex items-center text-blue-600">
+                      <Loader2 className="h-5 w-5 animate-spin mr-1" /> 
+                      Verificando...
+                    </div>
+                  ) : columnCheck.exists ? (
+                    <div className="flex items-center text-green-600">
+                      <CheckCircle className="h-5 w-5 mr-1" /> 
+                      {columnCheck.fixed 
+                        ? "Columna job_data añadida correctamente." 
+                        : "La columna job_data ya existe."}
+                    </div>
+                  ) : columnCheck.error ? (
+                    <div>
+                      <div className="flex items-center text-red-600 mb-2">
+                        <XCircle className="h-5 w-5 mr-1" /> 
+                        Error: {columnCheck.error}
                       </div>
-                    ) : columnCheck.exists ? (
-                      <div className="flex items-center text-green-600">
-                        <CheckCircle className="h-5 w-5 mr-1" /> 
-                        {columnCheck.fixed 
-                          ? "Columna job_data añadida correctamente." 
-                          : "La columna job_data ya existe."}
-                      </div>
-                    ) : columnCheck.error ? (
-                      <div>
-                        <div className="flex items-center text-red-600 mb-2">
-                          <XCircle className="h-5 w-5 mr-1" /> 
-                          Error: {columnCheck.error}
-                        </div>
-                        <Button 
-                          onClick={checkAndFixJobDataColumn}
-                          size="sm"
-                          className="mt-2"
-                          disabled={columnCheck.checking}
-                        >
-                          Intentar nuevamente
-                        </Button>
-                      </div>
-                    ) : (
                       <Button 
                         onClick={checkAndFixJobDataColumn}
+                        size="sm"
                         className="mt-2"
                         disabled={columnCheck.checking}
                       >
-                        <Database className="mr-2 h-4 w-4" />
-                        Verificar y arreglar columna job_data
+                        Intentar nuevamente
                       </Button>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <Button 
+                      onClick={checkAndFixJobDataColumn}
+                      className="mt-2"
+                      disabled={columnCheck.checking}
+                    >
+                      <Database className="mr-2 h-4 w-4" />
+                      Verificar y arreglar columna job_data
+                    </Button>
+                  )}
                 </div>
-              )}
+              </div>
+            )}
 
-              {(!diagResults.tablesExist.saved_jobs || !diagResults.tablesExist.job_applications || !diagResults.tablesExist.jobs) && (
-                <Alert className="mt-4">
+            {/* Sección para crear tablas */}
+            {!diagResults.tablesExist.saved_jobs || 
+             !diagResults.tablesExist.job_applications || 
+             !diagResults.tablesExist.jobs ||
+             !diagResults.tablesExist.notifications ? (
+              <div className="mt-6">
+                <Alert className="bg-amber-50">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Tablas faltantes</AlertTitle>
                   <AlertDescription>
-                    Algunas tablas requeridas no existen. Puedes crearlas manualmente ejecutando el script SQL o usar el botón a continuación.
-                    <div className="mt-4">
-                      <Button
-                        onClick={executeCreateTablesScript}
-                        disabled={scriptExecution.executing}
-                        className="flex items-center gap-2"
+                    Algunas tablas necesarias no existen. Puedes crearlas ejecutando el script SQL.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="mt-4">
+                  <Button 
+                    onClick={executeCreateTablesScript} 
+                    disabled={scriptExecution.executing}
+                    variant="default"
+                  >
+                    {scriptExecution.executing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Ejecutando script...
+                      </>
+                    ) : (
+                      "Crear tablas faltantes"
+                    )}
+                  </Button>
+
+                  {scriptExecution.success && (
+                    <Alert className="mt-2 bg-green-50">
+                      <CheckCircle className="h-4 w-4" />
+                      <AlertTitle>Éxito</AlertTitle>
+                      <AlertDescription>
+                        Las tablas se han creado correctamente. Ejecuta el diagnóstico nuevamente para verificar.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {scriptExecution.error && (
+                    <Alert className="mt-2 bg-red-50">
+                      <XCircle className="h-4 w-4" />
+                      <AlertTitle>Error</AlertTitle>
+                      <AlertDescription>
+                        No se pudieron crear las tablas: {scriptExecution.error}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            <Separator className="my-6" />
+
+            {/* Sección para generar notificaciones de prueba */}
+            <div className="mt-6">
+              <h3 className="text-lg font-medium flex items-center mb-4">
+                <Bell className="mr-2 h-5 w-5" /> Generador de Notificaciones de Prueba
+              </h3>
+              
+              {!diagResults.tablesExist.notifications ? (
+                <Alert className="bg-amber-50">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Tabla de notificaciones no disponible</AlertTitle>
+                  <AlertDescription>
+                    La tabla de notificaciones no existe. Crea las tablas primero.
+                  </AlertDescription>
+                </Alert>
+              ) : !user ? (
+                <Alert className="bg-amber-50">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Usuario no autenticado</AlertTitle>
+                  <AlertDescription>
+                    Debes iniciar sesión para generar notificaciones de prueba.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-12 gap-4 items-end">
+                    <div className="col-span-6">
+                      <Label htmlFor="notification-count">Número de notificaciones</Label>
+                      <Input 
+                        id="notification-count"
+                        type="number" 
+                        min="1" 
+                        max="20" 
+                        value={notificationGeneration.count} 
+                        onChange={(e) => setNotificationGeneration(prev => ({
+                          ...prev, 
+                          count: parseInt(e.target.value) || 1
+                        }))}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div className="col-span-6">
+                      <Button 
+                        onClick={handleGenerateTestNotifications} 
+                        disabled={notificationGeneration.generating || !user}
+                        variant="default"
                       >
-                        {scriptExecution.executing ? (
+                        {notificationGeneration.generating ? (
                           <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Ejecutando...
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generando...
                           </>
                         ) : (
-                          <>
-                            <Database className="h-4 w-4" />
-                            Crear tablas automáticamente
-                          </>
+                          "Generar notificaciones"
                         )}
                       </Button>
-                      
-                      {scriptExecution.success && (
-                        <p className="text-green-600 text-sm mt-2">
-                          Script ejecutado correctamente. Recargando diagnóstico...
-                        </p>
-                      )}
-                      
-                      {scriptExecution.error && (
-                        <p className="text-red-600 text-sm mt-2">
-                          {scriptExecution.error}
-                        </p>
-                      )}
                     </div>
-                  </AlertDescription>
-                </Alert>
-              )}
+                  </div>
 
-              {(!diagResults.bucketsExist.resumes || !diagResults.bucketsExist.avatars) && (
-                <Alert className="mt-4">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Buckets faltantes</AlertTitle>
-                  <AlertDescription>
-                    Debes crear los buckets necesarios en Supabase. Sigue las instrucciones en el archivo <code>INSTRUCCIONES_SUPABASE.md</code>.
-                  </AlertDescription>
-                </Alert>
+                  {notificationGeneration.success && (
+                    <Alert className="bg-green-50">
+                      <CheckCircle className="h-4 w-4" />
+                      <AlertTitle>Éxito</AlertTitle>
+                      <AlertDescription>
+                        {notificationGeneration.message}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {notificationGeneration.error && (
+                    <Alert className="bg-red-50">
+                      <XCircle className="h-4 w-4" />
+                      <AlertTitle>Error</AlertTitle>
+                      <AlertDescription>
+                        No se pudieron generar las notificaciones: {String(notificationGeneration.error)}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
               )}
             </div>
-
-            <Button
-              onClick={runDiagnostic}
-              className="mt-6 w-full"
-              disabled={diagResults.loading}
-            >
-              {diagResults.loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Ejecutando...
-                </>
-              ) : (
-                "Ejecutar diagnóstico nuevamente"
-              )}
-            </Button>
-          </>
-        )}
-      </CardContent>
-    </Card>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

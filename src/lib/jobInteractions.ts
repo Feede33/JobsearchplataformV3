@@ -545,4 +545,119 @@ export const notifyNewJobInCategory = async (userId: string, job: any, category:
     `Se ha publicado un nuevo trabajo de ${job.title} en ${job.company} en la categoría ${category}.`,
     { jobId: job.id, job, category }
   );
+};
+
+/**
+ * Genera notificaciones de prueba para el usuario actual
+ * Útil para probar la interfaz de notificaciones
+ */
+export const generateTestNotifications = async (userId: string, count: number = 5) => {
+  if (!userId) return { success: false, error: 'Se requiere un ID de usuario' };
+  
+  try {
+    const notificationTypes = [
+      'job_match',
+      'application_status',
+      'new_job',
+      'system'
+    ];
+    
+    const jobTitles = [
+      'Desarrollador Frontend',
+      'Ingeniero de Software',
+      'Diseñador UX/UI',
+      'Product Manager',
+      'Data Scientist',
+      'DevOps Engineer',
+      'Marketing Digital'
+    ];
+    
+    const companies = [
+      'TechCorp',
+      'Innovate Inc',
+      'Digital Solutions',
+      'Creative Labs',
+      'Data Insights',
+      'Cloud Systems',
+      'Marketing Pro'
+    ];
+    
+    const applicationStatuses = [
+      'recibida',
+      'en revisión',
+      'entrevista programada',
+      'oferta enviada',
+      'rechazada'
+    ];
+    
+    const results = [];
+    
+    for (let i = 0; i < count; i++) {
+      // Seleccionar tipo aleatorio
+      const type = notificationTypes[Math.floor(Math.random() * notificationTypes.length)];
+      
+      // Generar datos según el tipo
+      let title = '';
+      let message = '';
+      let data = {};
+      
+      const jobTitle = jobTitles[Math.floor(Math.random() * jobTitles.length)];
+      const company = companies[Math.floor(Math.random() * companies.length)];
+      const jobId = Math.floor(Math.random() * 1000) + 1;
+      
+      switch (type) {
+        case 'job_match':
+          title = `¡Nuevo match de empleo!`;
+          message = `Tu perfil coincide con la oferta de ${jobTitle} en ${company}.`;
+          data = { jobId, matchScore: Math.floor(Math.random() * 30) + 70 };
+          break;
+          
+        case 'application_status':
+          const status = applicationStatuses[Math.floor(Math.random() * applicationStatuses.length)];
+          title = `Actualización de aplicación`;
+          message = `Tu aplicación para ${jobTitle} en ${company} ha sido ${status}.`;
+          data = { 
+            jobId, 
+            applicationId: `app-${Math.random().toString(36).substring(2, 10)}`,
+            status
+          };
+          break;
+          
+        case 'new_job':
+          title = `Nueva oferta disponible`;
+          message = `Se ha publicado una nueva oferta de ${jobTitle} en ${company} que podría interesarte.`;
+          data = { jobId };
+          break;
+          
+        case 'system':
+          title = `Actualización del sistema`;
+          message = `Hemos mejorado nuestra plataforma con nuevas funcionalidades para ayudarte a encontrar empleo.`;
+          data = { updateId: Math.floor(Math.random() * 100) };
+          break;
+      }
+      
+      // Crear la notificación
+      const result = await createNotification(
+        userId,
+        type,
+        title,
+        message,
+        data
+      );
+      
+      results.push(result);
+      
+      // Pequeña pausa para que las notificaciones tengan timestamps diferentes
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    return { 
+      success: true, 
+      results,
+      message: `Se han generado ${results.filter(r => r.success).length} notificaciones de prueba`
+    };
+  } catch (err) {
+    console.error('Error al generar notificaciones de prueba:', err);
+    return { success: false, error: err };
+  }
 }; 

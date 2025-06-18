@@ -61,7 +61,16 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
-          <Route path="/notifications" element={<div className="p-10"><NotificationCenter /></div>} />
+          <Route 
+            path="/notifications" 
+            element={
+              <ProtectedRoute>
+                <div className="p-10">
+                  <NotificationCenter isFullPage={true} />
+                </div>
+              </ProtectedRoute>
+            } 
+          />
         </Routes>
         {import.meta.env.VITE_TEMPO === "true" && useRoutes(tempoRoutes)}
       </>

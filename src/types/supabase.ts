@@ -32,26 +32,120 @@ export interface Database {
           created_at?: string;
         };
       };
-      saved_jobs: {
+      jobs: {
         Row: {
           id: number;
-          user_id: string;
-          job_id: string;
-          job_data: Json;
+          title: string;
+          company: string;
+          logo: string | null;
+          location: string | null;
+          salary: string | null;
+          type: string | null;
+          requirements: Json | null;
+          description: string | null;
+          posted_date: string | null;
+          category: string | null;
+          is_featured: boolean;
+          is_remote: boolean;
+          score: number;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: number;
-          user_id: string;
-          job_id: string;
-          job_data: Json;
+          title: string;
+          company: string;
+          logo?: string | null;
+          location?: string | null;
+          salary?: string | null;
+          type?: string | null;
+          requirements?: Json | null;
+          description?: string | null;
+          posted_date?: string | null;
+          category?: string | null;
+          is_featured?: boolean;
+          is_remote?: boolean;
+          score?: number;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: number;
+          title?: string;
+          company?: string;
+          logo?: string | null;
+          location?: string | null;
+          salary?: string | null;
+          type?: string | null;
+          requirements?: Json | null;
+          description?: string | null;
+          posted_date?: string | null;
+          category?: string | null;
+          is_featured?: boolean;
+          is_remote?: boolean;
+          score?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      job_applications: {
+        Row: {
+          id: string;
+          user_id: string;
+          job_id: number;
+          cover_letter: string | null;
+          resume_url: string | null;
+          status: string;
+          job_data: Json | null;
+          created_at: string;
+          updated_at: string;
+          application_date: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          job_id: number;
+          cover_letter?: string | null;
+          resume_url?: string | null;
+          status?: string;
+          job_data?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+          application_date?: string;
+        };
+        Update: {
+          id?: string;
           user_id?: string;
-          job_id?: string;
-          job_data?: Json;
+          job_id?: number;
+          cover_letter?: string | null;
+          resume_url?: string | null;
+          status?: string;
+          job_data?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+          application_date?: string;
+        };
+      };
+      saved_jobs: {
+        Row: {
+          id: string;
+          user_id: string;
+          job_id: number;
+          job_data: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          job_id: number;
+          job_data?: Json | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          job_id?: number;
+          job_data?: Json | null;
           created_at?: string;
         };
       };
