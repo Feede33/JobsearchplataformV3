@@ -67,6 +67,7 @@ const JobManagement: React.FC = () => {
     category: "Desarrollo de Software",
     is_featured: false,
     is_remote: false,
+    created_at: new Date().toISOString(),
   });
 
   // Verificar si el usuario es administrador
@@ -264,6 +265,7 @@ const JobManagement: React.FC = () => {
       category: job.category,
       is_featured: job.is_featured,
       is_remote: job.is_remote,
+      created_at: job.created_at,
     });
   };
 
@@ -282,6 +284,7 @@ const JobManagement: React.FC = () => {
       category: "Desarrollo de Software",
       is_featured: false,
       is_remote: false,
+      created_at: new Date().toISOString(),
     });
   };
 
