@@ -16,7 +16,7 @@ import {
 import { toast } from "./ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Facebook, Twitter, Linkedin, Instagram, Globe } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 const INDUSTRY_OPTIONS = [
@@ -65,6 +65,10 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ onComplete }) =
     founded_year: "",
     contact_email: "",
     contact_phone: "",
+    facebook_url: "",
+    twitter_url: "",
+    linkedin_url: "",
+    instagram_url: "",
   });
 
   // Cargar perfil existente
@@ -100,6 +104,10 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ onComplete }) =
             founded_year: data.founded_year ? data.founded_year.toString() : "",
             contact_email: data.contact_email || user.email || "",
             contact_phone: data.contact_phone || "",
+            facebook_url: data.facebook_url || "",
+            twitter_url: data.twitter_url || "",
+            linkedin_url: data.linkedin_url || "",
+            instagram_url: data.instagram_url || "",
           });
         }
       } catch (error) {
@@ -130,6 +138,11 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ onComplete }) =
   // Manejar cambios en selects
   const handleSelectChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Abrir enlace de red social
+  const openSocialLink = (url: string, defaultUrl: string) => {
+    window.open(url || defaultUrl, "_blank", "noopener,noreferrer");
   };
 
   // Guardar perfil
@@ -163,6 +176,10 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ onComplete }) =
         founded_year: foundedYear,
         contact_email: formData.contact_email,
         contact_phone: formData.contact_phone,
+        facebook_url: formData.facebook_url,
+        twitter_url: formData.twitter_url,
+        linkedin_url: formData.linkedin_url,
+        instagram_url: formData.instagram_url,
         updated_at: new Date().toISOString(),
       };
 
@@ -366,6 +383,100 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ onComplete }) =
                 placeholder="Describe brevemente tu empresa, su misión y valores..."
                 className="min-h-[150px]"
               />
+            </div>
+
+            {/* Sección de redes sociales */}
+            <div className="md:col-span-2">
+              <h3 className="text-lg font-medium mb-4">Redes Sociales</h3>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="facebook_url">Facebook</Label>
+                  <div className="flex">
+                    <Input
+                      id="facebook_url"
+                      name="facebook_url"
+                      value={formData.facebook_url}
+                      onChange={handleChange}
+                      placeholder="https://facebook.com/tuempresa"
+                      className="rounded-r-none"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-l-none"
+                      onClick={() => openSocialLink(formData.facebook_url, "https://facebook.com")}
+                    >
+                      <Facebook className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="twitter_url">Twitter</Label>
+                  <div className="flex">
+                    <Input
+                      id="twitter_url"
+                      name="twitter_url"
+                      value={formData.twitter_url}
+                      onChange={handleChange}
+                      placeholder="https://twitter.com/tuempresa"
+                      className="rounded-r-none"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-l-none"
+                      onClick={() => openSocialLink(formData.twitter_url, "https://twitter.com")}
+                    >
+                      <Twitter className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="linkedin_url">LinkedIn</Label>
+                  <div className="flex">
+                    <Input
+                      id="linkedin_url"
+                      name="linkedin_url"
+                      value={formData.linkedin_url}
+                      onChange={handleChange}
+                      placeholder="https://linkedin.com/company/tuempresa"
+                      className="rounded-r-none"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-l-none"
+                      onClick={() => openSocialLink(formData.linkedin_url, "https://linkedin.com")}
+                    >
+                      <Linkedin className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="instagram_url">Instagram</Label>
+                  <div className="flex">
+                    <Input
+                      id="instagram_url"
+                      name="instagram_url"
+                      value={formData.instagram_url}
+                      onChange={handleChange}
+                      placeholder="https://instagram.com/tuempresa"
+                      className="rounded-r-none"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-l-none"
+                      onClick={() => openSocialLink(formData.instagram_url, "https://instagram.com")}
+                    >
+                      <Instagram className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

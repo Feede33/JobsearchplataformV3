@@ -7,8 +7,13 @@ import {
   ToastViewport,
 } from "@/components/ui/toast"
 import { useToast } from "@/components/ui/use-toast"
+import * as React from "react"
 
-export function Toaster() {
+// Usar React.forwardRef para evitar el warning de UNSAFE_componentWillMount
+const ToasterComponent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>((props, ref) => {
   const { toasts } = useToast()
 
   return (
@@ -30,4 +35,7 @@ export function Toaster() {
       <ToastViewport />
     </ToastProvider>
   )
-}
+})
+ToasterComponent.displayName = "Toaster"
+
+export const Toaster = ToasterComponent
