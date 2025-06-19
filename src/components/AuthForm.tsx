@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,11 +8,19 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Eye, EyeOff, Briefcase, User, Info } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface AuthFormProps {
   onClose?: () => void;
@@ -21,10 +29,12 @@ interface AuthFormProps {
 const AuthForm = ({ onClose }: AuthFormProps) => {
   const { login, signup, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-
+  const [activeTab, setActiveTab] = useState("login");
+  
   // Login form state
   const [loginData, setLoginData] = useState({
     email: "",
@@ -37,7 +47,19 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
     email: "",
     password: "",
     confirmPassword: "",
+    isCompany: false,
   });
+  
+  // Check URL for company parameter
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const type = queryParams.get('type');
+    
+    if (type === 'company') {
+      setActiveTab('signup');
+      setSignupData(prev => ({ ...prev, isCompany: true }));
+    }
+  }, [location]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +97,7 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
         signupData.name,
         signupData.email,
         signupData.password,
+        signupData.isCompany
       );
       if (result.success) {
         onClose?.();
@@ -101,7 +124,7 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Iniciar sesión</TabsTrigger>
               <TabsTrigger value="signup">Registrarse</TabsTrigger>
@@ -162,13 +185,62 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
             </TabsContent>
 
             <TabsContent value="signup">
+              {/* Selector de tipo de cuenta */}
+              <div className="mb-6">
+                <div className="text-sm text-gray-500 mb-2">Tipo de cuenta:</div>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    className={`flex flex-col items-center justify-center p-4 border rounded-lg hover:border-primary transition-all ${
+                      !signupData.isCompany ? "bg-primary/10 border-primary" : "bg-background border-input"
+                    }`}
+                    onClick={() => setSignupData({ ...signupData, isCompany: false })}
+                  >
+                    <User className="h-8 w-8 mb-2" />
+                    <span className="font-medium">Candidato</span>
+                    <span className="text-xs text-gray-500 mt-1">Busca empleo</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`flex flex-col items-center justify-center p-4 border rounded-lg hover:border-primary transition-all ${
+                      signupData.isCompany ? "bg-primary/10 border-primary" : "bg-background border-input"
+                    }`}
+                    onClick={() => setSignupData({ ...signupData, isCompany: true })}
+                  >
+                    <Briefcase className="h-8 w-8 mb-2" />
+                    <span className="font-medium">Empresa</span>
+                    <span className="text-xs text-gray-500 mt-1">Publica ofertas</span>
+                  </button>
+                </div>
+                
+                {/* Información adicional para empresas */}
+                {signupData.isCompany && (
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-start">
+                      <Info className="h-5 w-5 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
+                      <div className="text-sm text-blue-700">
+                        <p className="font-medium mb-1">Beneficios para empresas:</p>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Publica ofertas de trabajo ilimitadas</li>
+                          <li>Gestiona candidaturas desde un panel centralizado</li>
+                          <li>Perfil de empresa destacado</li>
+                          <li>Acceso a herramientas de selección avanzadas</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-name">Nombre completo</Label>
+                  <Label htmlFor="signup-name">
+                    {signupData.isCompany ? "Nombre de la empresa" : "Nombre completo"}
+                  </Label>
                   <Input
                     id="signup-name"
                     type="text"
-                    placeholder="Ingresa tu nombre completo"
+                    placeholder={signupData.isCompany ? "Ingresa el nombre de tu empresa" : "Ingresa tu nombre completo"}
                     value={signupData.name}
                     onChange={(e) =>
                       setSignupData({ ...signupData, name: e.target.value })
@@ -243,13 +315,62 @@ const AuthForm = ({ onClose }: AuthFormProps) => {
                     {error}
                   </div>
                 )}
-                <Button type="submit" className="w-full" disabled={isLoading || authLoading}>
-                  {isLoading ? "Creando cuenta..." : "Crear cuenta"}
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={isLoading || authLoading}
+                  variant={signupData.isCompany ? "default" : "default"}
+                >
+                  {isLoading 
+                    ? "Procesando..." 
+                    : signupData.isCompany 
+                      ? "Registrar empresa" 
+                      : "Registrar cuenta"
+                  }
                 </Button>
               </form>
             </TabsContent>
           </Tabs>
         </CardContent>
+        <CardFooter className="flex flex-col space-y-4 pt-0">
+          <div className="text-center w-full">
+            <button
+              type="button"
+              className="text-sm text-blue-600 hover:underline"
+              onClick={() => setActiveTab(activeTab === "login" ? "signup" : "login")}
+            >
+              {activeTab === "login"
+                ? "¿No tienes una cuenta? Regístrate"
+                : "¿Ya tienes una cuenta? Inicia sesión"}
+            </button>
+          </div>
+          {activeTab === "login" && (
+            <div className="text-center w-full">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="text-sm text-blue-600 hover:underline flex items-center justify-center mx-auto"
+                      onClick={() => {
+                        setActiveTab("signup");
+                        setSignupData({ ...signupData, isCompany: true });
+                      }}
+                    >
+                      <Briefcase className="h-4 w-4 mr-1" />
+                      Registrar empresa
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="w-60 text-sm">
+                      Crea una cuenta de empresa para publicar ofertas de trabajo y gestionar candidaturas
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          )}
+        </CardFooter>
       </Card>
     </div>
   );

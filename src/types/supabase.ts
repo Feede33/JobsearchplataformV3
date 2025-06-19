@@ -50,6 +50,7 @@ export interface Database {
           score: number;
           created_at: string;
           updated_at: string;
+          company_id: string | null;
         };
         Insert: {
           id?: number;
@@ -68,6 +69,7 @@ export interface Database {
           score?: number;
           created_at?: string;
           updated_at?: string;
+          company_id?: string | null;
         };
         Update: {
           id?: number;
@@ -86,6 +88,7 @@ export interface Database {
           score?: number;
           created_at?: string;
           updated_at?: string;
+          company_id?: string | null;
         };
       };
       job_applications: {
@@ -170,6 +173,56 @@ export interface Database {
           name?: string | null;
           avatar_url?: string | null;
           updated_at?: string | null;
+        };
+      };
+      company_profiles: {
+        Row: {
+          id: string;
+          company_name: string;
+          industry: string | null;
+          website: string | null;
+          logo_url: string | null;
+          description: string | null;
+          location: string | null;
+          size: string | null;
+          founded_year: number | null;
+          contact_email: string | null;
+          contact_phone: string | null;
+          is_verified: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          company_name: string;
+          industry?: string | null;
+          website?: string | null;
+          logo_url?: string | null;
+          description?: string | null;
+          location?: string | null;
+          size?: string | null;
+          founded_year?: number | null;
+          contact_email?: string | null;
+          contact_phone?: string | null;
+          is_verified?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          company_name?: string;
+          industry?: string | null;
+          website?: string | null;
+          logo_url?: string | null;
+          description?: string | null;
+          location?: string | null;
+          size?: string | null;
+          founded_year?: number | null;
+          contact_email?: string | null;
+          contact_phone?: string | null;
+          is_verified?: boolean;
+          created_at?: string;
+          updated_at?: string;
         };
       };
       notifications: {
