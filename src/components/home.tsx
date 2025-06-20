@@ -46,26 +46,48 @@ const HomePage = () => {
   const [popularCategories, setPopularCategories] = useState<string[]>([]);
   const [jobs, setJobs] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isJobLoading, setIsJobLoading] = useState(false);
+  const [isLocationLoading, setIsLocationLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const jobInputRef = useRef<HTMLInputElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
   const jobSuggestionsRef = useRef<HTMLDivElement>(null);
   const locationSuggestionsRef = useRef<HTMLDivElement>(null);
 
-  // Handle clicks outside to close suggestions
+  // Detectar si el dispositivo es móvil
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkIfMobile();
+    window.addEventListener('resize', checkIfMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkIfMobile);
+    };
+  }, []);
+
+  // Control de clics fuera de los componentes de sugerencias
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Para las sugerencias de trabajo
       if (
-        jobSuggestionsRef.current &&
-        !jobSuggestionsRef.current.contains(event.target as Node) &&
-        !jobInputRef.current?.contains(event.target as Node)
+        jobInputRef.current && 
+        !jobInputRef.current.contains(event.target as Node) &&
+        jobSuggestionsRef.current && 
+        !jobSuggestionsRef.current.contains(event.target as Node)
       ) {
         setShowJobSuggestions(false);
       }
+
+      // Para las sugerencias de ubicación
       if (
-        locationSuggestionsRef.current &&
-        !locationSuggestionsRef.current.contains(event.target as Node) &&
-        !locationInputRef.current?.contains(event.target as Node)
+        locationInputRef.current && 
+        !locationInputRef.current.contains(event.target as Node) &&
+        locationSuggestionsRef.current && 
+        !locationSuggestionsRef.current.contains(event.target as Node)
       ) {
         setShowLocationSuggestions(false);
       }
@@ -110,30 +132,54 @@ const HomePage = () => {
     loadCategories();
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    setShowJobSuggestions(false);
-    setShowLocationSuggestions(false);
-
-    // Navegar a la página de resultados de búsqueda con los parámetros de búsqueda
-    navigate("/search-results", {
-      state: {
-        searchTerm: searchTerm.trim(),
-        location: location.trim(),
-        employmentType: employmentType || "all",
-        salaryMin: salaryRange[0],
-      },
-    });
+    
+    // Mostrar indicador de carga
+    setIsJobLoading(true);
+    setIsLocationLoading(true);
+    
+    try {
+      // Recopilar términos de búsqueda
+      const searchParams = new URLSearchParams();
+      if (searchTerm) searchParams.append("query", searchTerm);
+      if (location) searchParams.append("location", location);
+      
+      // Navegar a la página de resultados con los parámetros
+      navigate(`/search-results?${searchParams.toString()}`);
+    } catch (error) {
+      console.error("Error al realizar la búsqueda:", error);
+    } finally {
+      // Ocultar indicador de carga
+      setIsJobLoading(false);
+      setIsLocationLoading(false);
+    }
   };
 
-  const handleJobSuggestionSelect = (suggestion: string) => {
-    setSearchTerm(suggestion);
+  const handleJobSuggestionSelect = (value: string) => {
+    setSearchTerm(value);
     setShowJobSuggestions(false);
   };
 
-  const handleLocationSuggestionSelect = (suggestion: string) => {
-    setLocation(suggestion);
+  const handleLocationSuggestionSelect = (value: string) => {
+    setLocation(value);
     setShowLocationSuggestions(false);
+  };
+  
+  const handleJobInputFocus = () => {
+    setIsJobLoading(true);
+    setTimeout(() => {
+      setShowJobSuggestions(true);
+      setIsJobLoading(false);
+    }, 300);
+  };
+  
+  const handleLocationInputFocus = () => {
+    setIsLocationLoading(true);
+    setTimeout(() => {
+      setShowLocationSuggestions(true);
+      setIsLocationLoading(false);
+    }, 300);
   };
 
   const handleLogout = () => {
@@ -253,22 +299,35 @@ const HomePage = () => {
                 <div className="relative">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
-                    ref={jobInputRef}
-                    type="text"
                     placeholder="Cargo, habilidad o empresa"
-                    className="pl-10"
-                    value={searchTerm}
+                    ref={jobInputRef}
                     onChange={(e) => {
                       setSearchTerm(e.target.value);
                       if (e.target.value.length >= 2) {
                         setShowJobSuggestions(true);
+                        // Simulamos una pequeña carga para mostrar el indicador
+                        setIsJobLoading(true);
+                        setTimeout(() => setIsJobLoading(false), 300);
+                      } else if (e.target.value.length === 0) {
+                        // Mostrar sugerencias recientes incluso cuando está vacío
+                        setShowJobSuggestions(true);
+                        setIsJobLoading(false);
                       } else {
                         setShowJobSuggestions(false);
                       }
                     }}
                     onClick={() => {
-                      if (searchTerm.length >= 2) {
-                        setShowJobSuggestions(true);
+                      // Mostrar sugerencias al hacer clic si hay texto o historial
+                      setShowJobSuggestions(true);
+                    }}
+                    onFocus={() => {
+                      // Mostrar sugerencias al enfocar el campo
+                      setShowJobSuggestions(true);
+                    }}
+                    onKeyDown={(e) => {
+                      // Si presiona Enter y hay un término de búsqueda, realizar la búsqueda
+                      if (e.key === 'Enter' && searchTerm.trim()) {
+                        handleSearch(new Event('submit') as any);
                       }
                     }}
                   />
@@ -276,36 +335,65 @@ const HomePage = () => {
                 {showJobSuggestions && (
                   <div
                     ref={jobSuggestionsRef}
-                    className="absolute z-10 w-full mt-1"
+                    className="absolute w-full"
+                    style={{ 
+                      zIndex: 999,
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      maxHeight: isMobile ? '50vh' : 'auto',
+                      overflowY: isMobile ? 'auto' : 'visible'
+                    }}
                   >
                     <SearchSuggestions
                       type="job"
                       searchTerm={searchTerm}
-                      onSelect={handleJobSuggestionSelect}
+                      onSelect={(value) => {
+                        setSearchTerm(value);
+                        setShowJobSuggestions(false);
+                        // Enfocar al siguiente campo después de seleccionar
+                        locationInputRef.current?.focus();
+                      }}
+                      loading={isJobLoading}
                     />
                   </div>
                 )}
               </div>
               <div className="md:col-span-4 relative">
                 <div className="relative">
-                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <MapPin className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                    ref={locationInputRef}
                     type="text"
                     placeholder="Ciudad o país"
-                    className="pl-10"
+                    className="pl-8"
                     value={location}
+                    ref={locationInputRef}
                     onChange={(e) => {
                       setLocation(e.target.value);
                       if (e.target.value.length >= 2) {
                         setShowLocationSuggestions(true);
+                        // Indicador de carga
+                        setIsLocationLoading(true);
+                        setTimeout(() => setIsLocationLoading(false), 300);
+                      } else if (e.target.value.length === 0) {
+                        // Mostrar historial cuando está vacío
+                        setShowLocationSuggestions(true);
+                        setIsLocationLoading(false);
                       } else {
                         setShowLocationSuggestions(false);
                       }
                     }}
                     onClick={() => {
-                      if (location.length >= 2) {
-                        setShowLocationSuggestions(true);
+                      setShowLocationSuggestions(true);
+                    }}
+                    onFocus={() => {
+                      setShowLocationSuggestions(true);
+                    }}
+                    onKeyDown={(e) => {
+                      // Si presiona Enter y hay términos de búsqueda, realizar la búsqueda
+                      if (e.key === 'Enter' && (searchTerm.trim() || location.trim())) {
+                        handleSearch(new Event('submit') as any);
                       }
                     }}
                   />
@@ -313,18 +401,42 @@ const HomePage = () => {
                 {showLocationSuggestions && (
                   <div
                     ref={locationSuggestionsRef}
-                    className="absolute z-10 w-full mt-1"
+                    className="absolute w-full"
+                    style={{ 
+                      zIndex: 999,
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      maxHeight: isMobile ? '50vh' : 'auto',
+                      overflowY: isMobile ? 'auto' : 'visible'
+                    }}
                   >
                     <SearchSuggestions
                       type="location"
                       searchTerm={location}
-                      onSelect={handleLocationSuggestionSelect}
+                      onSelect={(value) => {
+                        setLocation(value);
+                        setShowLocationSuggestions(false);
+                        // Al seleccionar una ubicación, enfocamos el botón de buscar
+                        document.getElementById('search-button')?.focus();
+                      }}
+                      loading={isLocationLoading}
                     />
                   </div>
                 )}
               </div>
-              <div className="md:col-span-3">
-                <Button type="submit" className="w-full h-10">
+              <div className={`${isMobile ? "col-span-12" : "md:col-span-2"} relative`}>
+                <Button 
+                  type="submit" 
+                  id="search-button"
+                  className="w-full"
+                  onClick={() => {
+                    // Cerrar las sugerencias al hacer clic en buscar
+                    setShowJobSuggestions(false);
+                    setShowLocationSuggestions(false);
+                  }}
+                >
                   Buscar
                 </Button>
               </div>

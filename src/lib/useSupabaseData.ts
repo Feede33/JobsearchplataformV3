@@ -325,6 +325,246 @@ export const useProfiles = () => {
   };
 };
 
+// Nuevo hook para obtener títulos de trabajos y ubicaciones para las sugerencias de búsqueda
+export const useSearchSuggestions = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [jobTitles, setJobTitles] = useState<string[]>([]);
+  const [locations, setLocations] = useState<string[]>([]);
+  
+  // Caché para almacenar resultados recientes y evitar consultas repetidas
+  const [jobTitlesCache, setJobTitlesCache] = useState<Record<string, { data: string[], timestamp: number }>>({});
+  const [locationsCache, setLocationsCache] = useState<Record<string, { data: string[], timestamp: number }>>({});
+  
+  const CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutos en milisegundos
+
+  // Obtener títulos de trabajos únicos de la base de datos
+  const fetchJobTitles = useCallback(async (searchTerm: string = '') => {
+    try {
+      // Verificar si tenemos resultados en caché para este término
+      const cacheKey = searchTerm.toLowerCase();
+      const cachedResult = jobTitlesCache[cacheKey];
+      const now = Date.now();
+      
+      // Si tenemos resultados en caché y no han expirado, usarlos
+      if (cachedResult && (now - cachedResult.timestamp < CACHE_EXPIRY)) {
+        return cachedResult.data;
+      }
+      
+      setLoading(true);
+      
+      let query = supabase
+        .from('jobs')
+        .select('title, company_name, skills');
+      
+      // Si hay un término de búsqueda, mejorar la búsqueda para incluir habilidades y otros campos relevantes
+      if (searchTerm && searchTerm.trim() !== '') {
+        query = query.or(`title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,skills.ilike.%${searchTerm}%`);
+      }
+      
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .limit(30);
+      
+      if (error) throw error;
+      
+      // Combinar títulos, empresas y habilidades para sugerencias más completas
+      let suggestions: string[] = [];
+      if (data) {
+        // Extraer títulos únicos
+        const uniqueTitles = Array.from(
+          new Set(data.map((job: any) => job.title))
+        );
+        
+        // Extraer nombres de empresas únicos
+        const uniqueCompanies = Array.from(
+          new Set(data.map((job: any) => job.company_name).filter(Boolean))
+        );
+        
+        // Extraer habilidades únicas de trabajos (si existen)
+        const uniqueSkills = Array.from(
+          new Set(
+            data
+              .flatMap((job: any) => {
+                // Verificar si skills es un array, string o null
+                if (Array.isArray(job.skills)) return job.skills;
+                if (typeof job.skills === 'string') return job.skills.split(',').map(s => s.trim());
+                return [];
+              })
+              .filter(Boolean)
+          )
+        );
+        
+        // Combinar títulos, empresas y habilidades en el array de sugerencias
+        suggestions = [...uniqueTitles, ...uniqueCompanies, ...uniqueSkills];
+        
+        // Ordenar las sugerencias por relevancia con el término de búsqueda
+        if (searchTerm) {
+          suggestions.sort((a, b) => {
+            const aStartsWith = a.toLowerCase().startsWith(searchTerm.toLowerCase()) ? -1 : 0;
+            const bStartsWith = b.toLowerCase().startsWith(searchTerm.toLowerCase()) ? -1 : 0;
+            return aStartsWith - bStartsWith;
+          });
+        }
+      }
+      
+      // Guardar en caché
+      setJobTitlesCache(prev => ({
+        ...prev,
+        [cacheKey]: { data: suggestions, timestamp: now }
+      }));
+      
+      // Actualizar el estado si es el término de búsqueda actual
+      if (searchTerm === '') {
+        setJobTitles(suggestions);
+      }
+      
+      return suggestions;
+    } catch (err) {
+      console.error('Error al obtener títulos de trabajos:', err);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [jobTitlesCache]);
+
+  // Obtener ubicaciones únicas de la base de datos
+  const fetchLocations = useCallback(async (searchTerm: string = '') => {
+    try {
+      // Verificar si tenemos resultados en caché para este término
+      const cacheKey = searchTerm.toLowerCase();
+      const cachedResult = locationsCache[cacheKey];
+      const now = Date.now();
+      
+      // Si tenemos resultados en caché y no han expirado, usarlos
+      if (cachedResult && (now - cachedResult.timestamp < CACHE_EXPIRY)) {
+        return cachedResult.data;
+      }
+      
+      setLoading(true);
+      
+      let query = supabase
+        .from('jobs')
+        .select('location, city, country');
+      
+      // Si hay un término de búsqueda, ampliar la búsqueda para incluir ciudad y país
+      if (searchTerm && searchTerm.trim() !== '') {
+        query = query.or(`location.ilike.%${searchTerm}%,city.ilike.%${searchTerm}%,country.ilike.%${searchTerm}%`);
+      }
+      
+      const { data, error } = await query
+        .order('location')
+        .limit(30);
+      
+      if (error) throw error;
+      
+      // Extraer ubicaciones únicas (filtrar valores nulos o vacíos)
+      const uniqueLocations = Array.from(
+        new Set(data.map((job: any) => job.location).filter(Boolean))
+      );
+      
+      // Extraer ciudades y países únicos si están disponibles
+      const uniqueCities = Array.from(
+        new Set(data.map((job: any) => job.city).filter(Boolean))
+      );
+      
+      const uniqueCountries = Array.from(
+        new Set(data.map((job: any) => job.country).filter(Boolean))
+      );
+      
+      // Combinar todas las ubicaciones únicas
+      const allLocations = [...uniqueLocations, ...uniqueCities, ...uniqueCountries];
+      
+      // Ordenar por relevancia si hay un término de búsqueda
+      if (searchTerm) {
+        allLocations.sort((a, b) => {
+          const aStartsWith = a.toLowerCase().startsWith(searchTerm.toLowerCase()) ? -1 : 0;
+          const bStartsWith = b.toLowerCase().startsWith(searchTerm.toLowerCase()) ? -1 : 0;
+          return aStartsWith - bStartsWith;
+        });
+      }
+      
+      // Guardar en caché
+      setLocationsCache(prev => ({
+        ...prev,
+        [cacheKey]: { data: allLocations, timestamp: now }
+      }));
+      
+      // Actualizar el estado si es el término de búsqueda actual
+      if (searchTerm === '') {
+        setLocations(allLocations);
+      }
+      
+      return allLocations as string[];
+    } catch (err) {
+      console.error('Error al obtener ubicaciones:', err);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [locationsCache]);
+
+  // Cargar datos iniciales al montar el componente
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        setLoading(true);
+        
+        // Cargar títulos de trabajo populares
+        await fetchJobTitles();
+        
+        // Cargar ubicaciones populares
+        await fetchLocations();
+      } catch (err) {
+        console.error('Error al cargar datos iniciales:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadInitialData();
+  }, [fetchJobTitles, fetchLocations]);
+
+  // Función para limpiar la caché periódicamente
+  useEffect(() => {
+    const cleanupCache = () => {
+      const now = Date.now();
+      setJobTitlesCache(prev => {
+        const updated = {...prev};
+        Object.keys(updated).forEach(key => {
+          if (now - updated[key].timestamp > CACHE_EXPIRY) {
+            delete updated[key];
+          }
+        });
+        return updated;
+      });
+      
+      setLocationsCache(prev => {
+        const updated = {...prev};
+        Object.keys(updated).forEach(key => {
+          if (now - updated[key].timestamp > CACHE_EXPIRY) {
+            delete updated[key];
+          }
+        });
+        return updated;
+      });
+    };
+    
+    // Limpiar la caché cada 10 minutos
+    const interval = setInterval(cleanupCache, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return {
+    jobTitles,
+    locations,
+    loading,
+    error,
+    fetchJobTitles,
+    fetchLocations
+  };
+};
+
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);

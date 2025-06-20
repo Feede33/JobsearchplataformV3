@@ -54,7 +54,9 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, sup
 // Verificar la conexión al iniciar
 (async () => {
   try {
-    const { error } = await supabase.from('health_check').select('*').maybeSingle();
+    // Verificar la conexión consultando la tabla jobs que sabemos existe
+    const { error } = await supabase.from('jobs').select('id', { count: 'exact', head: true }).limit(1);
+    
     if (error) {
       console.warn("⚠️ No se pudo conectar con Supabase:", error.message);
     } else {
