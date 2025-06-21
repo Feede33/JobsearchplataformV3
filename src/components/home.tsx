@@ -9,6 +9,12 @@ import {
   LogOut,
   ChevronRight,
   Settings,
+  FolderKanban,
+  Menu,
+  X,
+  Building,
+  FileText,
+  Home as HomeIcon,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -32,6 +38,16 @@ import TrendingJobsSection from "./TrendingJobsSection";
 import { getPopularJobCategories } from "@/lib/jobRecommendations";
 import { supabase } from "@/lib/supabase";
 import NotificationCenter from './NotificationCenter';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -44,11 +60,12 @@ const HomePage = () => {
   const [showJobSuggestions, setShowJobSuggestions] = useState(false);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [popularCategories, setPopularCategories] = useState<string[]>([]);
-  const [jobs, setJobs] = useState([]);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [isJobLoading, setIsJobLoading] = useState(false);
   const [isLocationLoading, setIsLocationLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const jobInputRef = useRef<HTMLInputElement>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
@@ -125,8 +142,23 @@ const HomePage = () => {
   // Cargar categorías populares
   useEffect(() => {
     const loadCategories = async () => {
-      const categories = await getPopularJobCategories();
-      setPopularCategories(categories);
+      try {
+        const categories = await getPopularJobCategories();
+        console.log("Categorías cargadas:", categories);
+        setPopularCategories(categories);
+      } catch (error) {
+        console.error("Error al cargar categorías:", error);
+        // Establecer categorías por defecto en caso de error
+        setPopularCategories([
+          "Desarrollo de Software",
+          "Marketing Digital",
+          "Diseño UX/UI",
+          "Ventas",
+          "Atención al Cliente"
+        ]);
+      } finally {
+        setCategoriesLoaded(true);
+      }
     };
     
     loadCategories();
@@ -187,371 +219,325 @@ const HomePage = () => {
     navigate("/");
   };
 
+  // Determinar qué categoría mostrar para la sección destacada
+  const getFeaturedCategory = () => {
+    if (popularCategories.length > 0) {
+      return popularCategories[0];
+    }
+    return "Desarrollo de Software"; // Categoría por defecto
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-white">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <h1
-              className="text-2xl font-bold text-primary cursor-pointer"
-              onClick={() => navigate("/")}
-            >
-              JobSearch
-            </h1>
-            <nav className="ml-10 hidden md:flex space-x-6">
-              <button
-                onClick={() => navigate("/")}
-                className="text-sm font-medium hover:text-primary transition-colors"
-              >
-                Find Jobs
-              </button>
-              <a
-                href="#"
-                className="text-sm font-medium hover:text-primary transition-colors"
-              >
-                Companies
-              </a>
-              <a
-                href="#"
-                className="text-sm font-medium hover:text-primary transition-colors"
-              >
-                Resources
-              </a>
-              {isAdmin && (
-                <button
-                  onClick={() => navigate("/admin/jobs")}
-                  className="text-sm font-medium text-orange-600 hover:text-orange-700 transition-colors flex items-center gap-1"
-                >
-                  <Settings className="h-4 w-4" />
-                  Admin Panel
-                </button>
-              )}
+    <div className="flex flex-col min-h-screen">
+      {/* Navbar */}
+      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between">
+            {/* Logo */}
+            <div className="flex items-center">
+              <Link to="/" className="flex items-center gap-2">
+                <Briefcase className="h-6 w-6 text-primary" />
+                <span className="text-xl font-bold text-primary">JobSearch</span>
+              </Link>
+            </div>
+            
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center space-x-6">
+              <Link to="/" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-1">
+                <HomeIcon className="h-4 w-4" />
+                <span>Inicio</span>
+              </Link>
+              <Link to="/search-results" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-1">
+                <Briefcase className="h-4 w-4" />
+                <span>Empleos</span>
+              </Link>
+              <Link to="/company-pricing" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-1">
+                <Building className="h-4 w-4" />
+                <span>Empresas</span>
+              </Link>
+              <Link to="/blog" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                <span>Blog</span>
+              </Link>
             </nav>
+
+            {/* User Account Area */}
+            <div className="flex items-center gap-2">
+              {isAuthenticated ? (
+                <>
+                  <NotificationCenter />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-full">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage src={user?.avatar || ""} alt={user?.email || "Usuario"} />
+                          <AvatarFallback>{(user?.email?.charAt(0) || "U").toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/profile")}>
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Perfil</span>
+                      </DropdownMenuItem>
+                      {isAdmin && (
+                        <DropdownMenuItem onClick={() => navigate("/admin")}>
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>Admin</span>
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Cerrar Sesión</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              ) : (
+                <>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => navigate("/auth")}
+                    className="hidden md:flex"
+                  >
+                    Iniciar Sesión
+                  </Button>
+                  <Button 
+                    variant="default" 
+                    onClick={() => navigate("/auth?action=register")}
+                    className="hidden md:flex"
+                  >
+                    Registrarse
+                  </Button>
+                </>
+              )}
+              
+              {/* Mobile Menu */}
+              <div className="md:hidden">
+                <Button variant="ghost" size="icon" onClick={() => setShowMobileMenu(!showMobileMenu)}>
+                  {showMobileMenu ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                </Button>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center space-x-4">
-            {isAuthenticated ? (
-              <>
-                <NotificationCenter />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate("/profile")}
-                  className="flex items-center gap-2"
+          
+          {/* Mobile Menu Panel */}
+          {showMobileMenu && (
+            <div className="md:hidden py-4 border-t">
+              <nav className="flex flex-col space-y-4">
+                <Link 
+                  to="/" 
+                  className="flex items-center gap-2 px-2 py-1 hover:bg-muted rounded-md"
+                  onClick={() => setShowMobileMenu(false)}
                 >
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={user?.avatar} alt={user?.name} />
-                    <AvatarFallback>
-                      {user?.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden md:inline">Mi Perfil</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="flex items-center gap-2"
+                  <HomeIcon className="h-4 w-4" />
+                  <span>Inicio</span>
+                </Link>
+                <Link 
+                  to="/search-results" 
+                  className="flex items-center gap-2 px-2 py-1 hover:bg-muted rounded-md"
+                  onClick={() => setShowMobileMenu(false)}
                 >
-                  <LogOut className="h-4 w-4" />
-                  <span className="hidden md:inline">Salir</span>
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate("/auth")}
+                  <Briefcase className="h-4 w-4" />
+                  <span>Empleos</span>
+                </Link>
+                <Link 
+                  to="/company-pricing" 
+                  className="flex items-center gap-2 px-2 py-1 hover:bg-muted rounded-md"
+                  onClick={() => setShowMobileMenu(false)}
                 >
-                  Iniciar Sesión
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => navigate("/auth?tab=signup")}
+                  <Building className="h-4 w-4" />
+                  <span>Empresas</span>
+                </Link>
+                <Link 
+                  to="/blog" 
+                  className="flex items-center gap-2 px-2 py-1 hover:bg-muted rounded-md"
+                  onClick={() => setShowMobileMenu(false)}
                 >
-                  Registrarse
-                </Button>
-              </>
-            )}
-          </div>
+                  <FileText className="h-4 w-4" />
+                  <span>Blog</span>
+                </Link>
+                
+                {!isAuthenticated && (
+                  <div className="pt-2 flex flex-col space-y-2">
+                    <Button variant="outline" onClick={() => {
+                      navigate("/auth");
+                      setShowMobileMenu(false);
+                    }}>
+                      Iniciar Sesión
+                    </Button>
+                    <Button onClick={() => {
+                      navigate("/auth?action=register");
+                      setShowMobileMenu(false);
+                    }}>
+                      Registrarse
+                    </Button>
+                  </div>
+                )}
+              </nav>
+            </div>
+          )}
         </div>
       </header>
 
-      {/* Hero section */}
-      <section className="relative py-20 bg-gradient-to-b from-primary/10 to-background">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center mb-10">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Encuentra el trabajo perfecto para ti
-            </h1>
-            <p className="text-lg text-muted-foreground mb-8">
-              Miles de empleos en las mejores empresas te están esperando
-            </p>
-          </div>
-
-          <form
-            onSubmit={handleSearch}
-            className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-4 md:p-6"
+      {/* Hero Section with Animation */}
+      <motion.section 
+        className="bg-gradient-to-r from-blue-600 to-indigo-800 text-white py-16 px-4 md:py-24"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.7 }}
+      >
+        <div className="container mx-auto max-w-6xl">
+          <motion.div 
+            className="max-w-2xl"
+            initial={{ y: 50 }}
+            animate={{ y: 0 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
           >
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-              <div className="md:col-span-5 relative">
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Cargo, habilidad o empresa"
-                    ref={jobInputRef}
-                    onChange={(e) => {
-                      setSearchTerm(e.target.value);
-                      if (e.target.value.length >= 2) {
-                        setShowJobSuggestions(true);
-                        // Simulamos una pequeña carga para mostrar el indicador
-                        setIsJobLoading(true);
-                        setTimeout(() => setIsJobLoading(false), 300);
-                      } else if (e.target.value.length === 0) {
-                        // Mostrar sugerencias recientes incluso cuando está vacío
-                        setShowJobSuggestions(true);
-                        setIsJobLoading(false);
-                      } else {
-                        setShowJobSuggestions(false);
-                      }
-                    }}
-                    onClick={() => {
-                      // Mostrar sugerencias al hacer clic si hay texto o historial
-                      setShowJobSuggestions(true);
-                    }}
-                    onFocus={() => {
-                      // Mostrar sugerencias al enfocar el campo
-                      setShowJobSuggestions(true);
-                    }}
-                    onKeyDown={(e) => {
-                      // Si presiona Enter y hay un término de búsqueda, realizar la búsqueda
-                      if (e.key === 'Enter' && searchTerm.trim()) {
-                        handleSearch(new Event('submit') as any);
-                      }
-                    }}
-                  />
-                </div>
-                {showJobSuggestions && (
-                  <div
-                    ref={jobSuggestionsRef}
-                    className="absolute w-full"
-                    style={{ 
-                      zIndex: 999,
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      maxHeight: isMobile ? '50vh' : 'auto',
-                      overflowY: isMobile ? 'auto' : 'visible'
-                    }}
-                  >
-                    <SearchSuggestions
-                      type="job"
-                      searchTerm={searchTerm}
-                      onSelect={(value) => {
-                        setSearchTerm(value);
-                        setShowJobSuggestions(false);
-                        // Enfocar al siguiente campo después de seleccionar
-                        locationInputRef.current?.focus();
-                      }}
-                      loading={isJobLoading}
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="md:col-span-4 relative">
-                <div className="relative">
-                  <MapPin className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Ciudad o país"
-                    className="pl-8"
-                    value={location}
-                    ref={locationInputRef}
-                    onChange={(e) => {
-                      setLocation(e.target.value);
-                      if (e.target.value.length >= 2) {
-                        setShowLocationSuggestions(true);
-                        // Indicador de carga
-                        setIsLocationLoading(true);
-                        setTimeout(() => setIsLocationLoading(false), 300);
-                      } else if (e.target.value.length === 0) {
-                        // Mostrar historial cuando está vacío
-                        setShowLocationSuggestions(true);
-                        setIsLocationLoading(false);
-                      } else {
-                        setShowLocationSuggestions(false);
-                      }
-                    }}
-                    onClick={() => {
-                      setShowLocationSuggestions(true);
-                    }}
-                    onFocus={() => {
-                      setShowLocationSuggestions(true);
-                    }}
-                    onKeyDown={(e) => {
-                      // Si presiona Enter y hay términos de búsqueda, realizar la búsqueda
-                      if (e.key === 'Enter' && (searchTerm.trim() || location.trim())) {
-                        handleSearch(new Event('submit') as any);
-                      }
-                    }}
-                  />
-                </div>
-                {showLocationSuggestions && (
-                  <div
-                    ref={locationSuggestionsRef}
-                    className="absolute w-full"
-                    style={{ 
-                      zIndex: 999,
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      maxHeight: isMobile ? '50vh' : 'auto',
-                      overflowY: isMobile ? 'auto' : 'visible'
-                    }}
-                  >
-                    <SearchSuggestions
-                      type="location"
-                      searchTerm={location}
-                      onSelect={(value) => {
-                        setLocation(value);
-                        setShowLocationSuggestions(false);
-                        // Al seleccionar una ubicación, enfocamos el botón de buscar
-                        document.getElementById('search-button')?.focus();
-                      }}
-                      loading={isLocationLoading}
-                    />
-                  </div>
-                )}
-              </div>
-              <div className={`${isMobile ? "col-span-12" : "md:col-span-2"} relative`}>
-                <Button 
-                  type="submit" 
-                  id="search-button"
-                  className="w-full"
-                  onClick={() => {
-                    // Cerrar las sugerencias al hacer clic en buscar
-                    setShowJobSuggestions(false);
-                    setShowLocationSuggestions(false);
-                  }}
-                >
-                  Buscar
-                </Button>
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-center">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                className="text-xs flex items-center"
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">Encuentra tu próximo empleo ideal</h1>
+            <p className="text-xl md:text-2xl mb-8">Conectamos a profesionales como tú con las mejores oportunidades laborales</p>
+            
+            <div className="flex flex-col sm:flex-row gap-4">
+              <motion.div 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <Filter className="h-3 w-3 mr-1" />
-                {showFilters ? "Ocultar filtros" : "Mostrar filtros"}
-              </Button>
+                <Button asChild size="lg" className="bg-white text-blue-700 hover:bg-blue-50 font-semibold px-8">
+                  <Link to="/search-results">Buscar Empleo</Link>
+                </Button>
+              </motion.div>
+              
+              <motion.div 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Button asChild variant="outline" size="lg" className="bg-transparent border-white text-white hover:bg-white/10 font-semibold px-8">
+                  <Link to="/company/jobs">Publicar Empleo</Link>
+                </Button>
+              </motion.div>
             </div>
+          </motion.div>
+        </div>
+      </motion.section>
 
-            {showFilters && (
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium mb-1 block">
-                    Tipo de empleo
-                  </label>
-                  <Select
-                    value={employmentType}
-                    onValueChange={setEmploymentType}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Cualquier tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="full-time">Tiempo completo</SelectItem>
-                      <SelectItem value="part-time">Medio tiempo</SelectItem>
-                      <SelectItem value="contract">Contrato</SelectItem>
-                      <SelectItem value="internship">Pasantía</SelectItem>
-                      <SelectItem value="remote">Remoto</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">
-                    Salario mínimo anual (USD)
-                  </label>
-                  <div className="pt-4 px-2">
-                    <Slider
-                      value={salaryRange}
-                      min={0}
-                      max={150000}
-                      step={5000}
-                      onValueChange={setSalaryRange}
-                    />
-                    <div className="mt-2 text-sm">
-                      {salaryRange[0] === 0
-                        ? "Cualquier salario"
-                        : `$${salaryRange[0].toLocaleString()}`}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </form>
-        </div>
-      </section>
-      
-      {/* Sección de trabajos personalizada */}
-      <section className="py-10">
-        <div className="container mx-auto px-4">
-          {/* Trabajos personalizados o destacados */}
-          <PersonalizedJobsSection limit={6} />
-          
-          {/* Trabajos en tendencia */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-            <div className="lg:col-span-2">
-              {popularCategories.length > 0 && (
-                <div className="border rounded-lg p-6 bg-white shadow-sm">
-                  <JobCategorySection 
-                    category={popularCategories[0]} 
-                    description="Los trabajos más demandados en esta categoría"
-                    limit={4}
-                    customLayout="grid grid-cols-1 md:grid-cols-2 gap-6"
-                  />
-                </div>
-              )}
-            </div>
-            <div className="lg:col-span-1">
-              <TrendingJobsSection limit={8} />
-            </div>
-          </div>
-          
-          {/* Categorías adicionales - con espaciado mejorado */}
-          <div className="grid grid-cols-1 gap-10">
-            {popularCategories.slice(1, 3).map((category) => (
-              <div key={category} className="border-t pt-8">
-                <JobCategorySection
-                  category={category}
-                  limit={4}
-                />
-              </div>
-            ))}
-          </div>
-          
-          {/* Categorías adicionales completas - con espaciado mejorado */}
-          <div className="mt-12">
-            {popularCategories.slice(3).map((category) => (
-              <div key={category} className="border-t pt-8 mb-10">
-                <JobCategorySection
-                  category={category}
-                  limit={4}
-                />
-              </div>
+      {/* Job Search Stats with Staggered Animation */}
+      <motion.section 
+        className="py-12 bg-gray-50"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="container mx-auto max-w-6xl px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { number: "10,000+", label: "Ofertas Disponibles" },
+              { number: "5,000+", label: "Empresas Registradas" },
+              { number: "15,000+", label: "Profesionales Contratados" }
+            ].map((stat, index) => (
+              <motion.div 
+                key={index}
+                className="bg-white p-6 rounded-lg shadow-sm text-center"
+                initial={{ y: 50, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.2, duration: 0.5 }}
+              >
+                <motion.p 
+                  className="text-3xl font-bold text-blue-600 mb-2"
+                  initial={{ scale: 0.8 }}
+                  whileInView={{ scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.2 + 0.3, type: "spring" }}
+                >
+                  {stat.number}
+                </motion.p>
+                <p className="text-gray-600">{stat.label}</p>
+              </motion.div>
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
+
+      {/* Job Categories Section */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.7 }}
+      >
+        <JobCategorySection 
+          title="Categorías Destacadas"
+          description="Explora oportunidades en las áreas más demandadas"
+          category={getFeaturedCategory()}
+        />
+      </motion.div>
+
+      {/* Personalized Jobs Section */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.7 }}
+      >
+        <PersonalizedJobsSection />
+      </motion.div>
+
+      {/* Trending Jobs Section */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.7 }}
+      >
+        <TrendingJobsSection />
+      </motion.div>
+
+      {/* Call to Action */}
+      <motion.section 
+        className="bg-blue-700 text-white py-16 px-4"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.7 }}
+      >
+        <div className="container mx-auto max-w-6xl text-center">
+          <motion.h2 
+            className="text-3xl md:text-4xl font-bold mb-6"
+            initial={{ y: 30 }}
+            whileInView={{ y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+          >
+            ¿Listo para dar el siguiente paso en tu carrera?
+          </motion.h2>
+          <motion.p 
+            className="text-xl mb-8 max-w-2xl mx-auto"
+            initial={{ y: 30 }}
+            whileInView={{ y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+          >
+            Únete a miles de profesionales que ya han encontrado su empleo ideal en nuestra plataforma
+          </motion.p>
+          
+          <motion.div
+            initial={{ y: 30 }}
+            whileInView={{ y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Button asChild size="lg" className="bg-white text-blue-700 hover:bg-blue-50 font-semibold px-8">
+              <Link to="/auth">Crear Cuenta Gratis</Link>
+            </Button>
+          </motion.div>
+        </div>
+      </motion.section>
     </div>
   );
 };

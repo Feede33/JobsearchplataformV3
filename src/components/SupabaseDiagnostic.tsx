@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-import { CheckCircle, AlertCircle, XCircle, Loader2, Database, Bell } from "lucide-react";
+import { CheckCircle, AlertCircle, XCircle, Loader2, Database, Bell, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { generateTestNotifications } from "@/lib/jobInteractions";
 import { Input } from "./ui/input";
@@ -63,6 +63,16 @@ const SupabaseDiagnostic = () => {
     count: 5,
     generating: false,
     success: false,
+    error: null,
+    message: ''
+  });
+
+  // Estado para verificación de seguridad
+  const [securityCheck, setSecurityCheck] = useState({
+    checking: false,
+    functionSearchPathFixed: false,
+    otpExpiryCorrect: false,
+    leakedPasswordProtectionEnabled: false,
     error: null,
     message: ''
   });
@@ -530,22 +540,77 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id,
     }
   };
 
+  // Verificar configuración de seguridad
+  const checkSecuritySettings = async () => {
+    setSecurityCheck(prev => ({ ...prev, checking: true, error: null, message: '' }));
+    
+    try {
+      // Obtener informe de seguridad utilizando la función RPC
+      const { data: securityReport, error: reportError } = await supabase
+        .rpc('get_security_report');
+
+      if (reportError) {
+        throw new Error(`Error al obtener informe de seguridad: ${reportError.message}`);
+      }
+
+      // Analizar resultados
+      const insecureFunctionsCount = securityReport?.security_issues?.insecure_functions_count || 0;
+      const insecureFunctions = securityReport?.security_issues?.insecure_functions || [];
+      const functionSearchPathFixed = insecureFunctionsCount === 0;
+
+      let message = functionSearchPathFixed 
+        ? "Todas las funciones tienen search_path configurado correctamente." 
+        : `Se encontraron ${insecureFunctionsCount} funciones inseguras: ${insecureFunctions.join(', ')}`;
+      
+      // 2 y 3: Estas verificaciones generalmente requieren acceso a nivel administrativo
+      // que no está disponible desde el cliente. Mostramos instrucciones en su lugar
+
+      setSecurityCheck(prev => ({
+        ...prev,
+        checking: false,
+        functionSearchPathFixed,
+        otpExpiryCorrect: false, // No podemos verificar desde el cliente
+        leakedPasswordProtectionEnabled: false, // No podemos verificar desde el cliente
+        message: message + "\n\nNota: Para verificar las configuraciones de OTP y protección de contraseñas, por favor acceda al panel de administración de Supabase."
+      }));
+
+      toast({
+        title: "Verificación de seguridad",
+        description: functionSearchPathFixed 
+          ? "Las funciones tienen configuración de seguridad correcta. Verifique manualmente las otras configuraciones." 
+          : `Se encontraron ${insecureFunctionsCount} funciones inseguras. Por favor, aplique la migración de seguridad.`,
+      });
+    } catch (error) {
+      setSecurityCheck(prev => ({
+        ...prev,
+        checking: false,
+        error: error.message,
+        message: 'Error al verificar configuración de seguridad.'
+      }));
+      
+      toast({
+        variant: "destructive",
+        title: "Error en verificación de seguridad",
+        description: error.message,
+      });
+    }
+  };
+
   useEffect(() => {
     runDiagnostic();
   }, []);
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto p-4 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Database className="mr-2" /> Diagnóstico de Supabase
-          </CardTitle>
+          <CardTitle className="text-2xl font-bold">Diagnóstico de Supabase</CardTitle>
           <CardDescription>
-            Verifica la configuración y el estado de la conexión con Supabase
+            Verifica la conexión a Supabase y el estado de las tablas y
+            buckets necesarios
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="space-y-4">
             <Button onClick={runDiagnostic} disabled={diagResults.loading}>
               {diagResults.loading ? (
@@ -816,6 +881,90 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id,
                     </Alert>
                   )}
                 </div>
+              )}
+            </div>
+
+            {/* Nueva sección de seguridad */}
+            <div className="mt-8 space-y-4">
+              <h3 className="text-xl font-semibold flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5" />
+                Verificación de Seguridad
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="p-4">
+                  <div className="flex items-center gap-2">
+                    {securityCheck.functionSearchPathFixed ? (
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-500" />
+                    )}
+                    <p>Función search_path segura</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {securityCheck.functionSearchPathFixed 
+                      ? "La función tiene configuración segura" 
+                      : "Se requiere fijar el search_path en la función"}
+                  </p>
+                </Card>
+                
+                <Card className="p-4">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-amber-500" />
+                    <p>Expiración OTP</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Verificar manualmente que sea menor a una hora
+                  </p>
+                </Card>
+                
+                <Card className="p-4">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-amber-500" />
+                    <p>Protección de contraseñas</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Verificar manualmente que esté activada
+                  </p>
+                </Card>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  onClick={checkSecuritySettings}
+                  disabled={securityCheck.checking}
+                  variant="outline"
+                >
+                  {securityCheck.checking ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Verificando...
+                    </>
+                  ) : (
+                    "Verificar configuración de seguridad"
+                  )}
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => window.open('/SECURITY_SETUP.md', '_blank')}
+                >
+                  Ver instrucciones de seguridad
+                </Button>
+              </div>
+              
+              {securityCheck.message && (
+                <Alert>
+                  <AlertTitle>Información de seguridad</AlertTitle>
+                  <AlertDescription>{securityCheck.message}</AlertDescription>
+                </Alert>
+              )}
+              
+              {securityCheck.error && (
+                <Alert variant="destructive">
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{securityCheck.error}</AlertDescription>
+                </Alert>
               )}
             </div>
           </div>

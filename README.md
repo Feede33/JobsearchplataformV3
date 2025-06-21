@@ -1,3 +1,81 @@
+# Plataforma de Búsqueda de Empleo
+
+Plataforma para buscar y aplicar a empleos desarrollada con React, Vite, TypeScript y Supabase.
+
+## Configuración
+
+### Requisitos previos
+- Node.js 18 o superior
+- Cuenta en Supabase
+
+### Instalación
+
+1. Clonar el repositorio
+   ```bash
+   git clone https://github.com/tu-usuario/jobsearchplataform.git
+   cd jobsearchplataform
+   ```
+
+2. Instalar dependencias
+   ```bash
+   npm install
+   ```
+
+3. Configurar variables de entorno
+   Crea un archivo `.env` en la raíz del proyecto con:
+   ```
+   VITE_SUPABASE_URL=your-supabase-url
+   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+   ```
+
+4. Iniciar el servidor de desarrollo
+   ```bash
+   npm run dev
+   ```
+
+### Configuración de Supabase
+
+Siga las instrucciones en `SUPABASE_SETUP.md` para configurar la base de datos y la autenticación.
+
+### Configuración de seguridad
+
+**IMPORTANTE**: Recientemente se han detectado algunas advertencias de seguridad. Para corregirlas:
+
+1. Siga las instrucciones detalladas en `SECURITY_SETUP.md` para:
+   - Corregir problemas de search_path mutable en funciones
+   - Ajustar el tiempo de expiración OTP a menos de una hora
+   - Habilitar la protección contra contraseñas filtradas
+
+2. Ejecute las migraciones de seguridad:
+   ```bash
+   psql -f supabase/migrations/20231021_fix_security_issues.sql
+   psql -f supabase/migrations/20231022_security_function.sql
+   ```
+
+3. Verifique las correcciones utilizando el componente `SupabaseDiagnostic`
+
+## Estructura del proyecto
+
+- `/src`: Código fuente
+  - `/components`: Componentes React
+  - `/lib`: Utilidades y configuración
+  - `/contexts`: Contextos React
+- `/supabase`: Archivos de configuración de Supabase
+  - `/migrations`: Scripts SQL para migraciones
+
+## Características principales
+
+- Búsqueda de empleos
+- Perfiles de usuario
+- Guardado de empleos favoritos
+- Aplicación a empleos
+- Panel para empresas
+- Blog integrado
+
+## Licencia
+
+Este proyecto está licenciado bajo la Licencia MIT - ver el archivo `LICENSE` para más detalles.
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

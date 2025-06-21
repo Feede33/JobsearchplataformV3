@@ -331,51 +331,55 @@ const JobListingCard = ({
   };
 
   return (
-    <Card className={`cursor-pointer h-full overflow-hidden border-gray-200 hover:border-gray-300 hover:shadow-md transition-all ${className}`} onClick={handleCardClick}>
-      <CardContent className="p-5">
-        <div className="flex gap-4 items-start">
-          <div className="w-12 h-12 rounded-md overflow-hidden shrink-0 border">
+    <Card className={`cursor-pointer h-full min-h-[300px] overflow-hidden border-gray-200 hover:border-gray-300 hover:shadow-md transition-all ${className}`} onClick={handleCardClick}>
+      <CardContent className="p-5 flex flex-col h-full relative">
+        <div className="flex gap-4 items-start mb-3">
+          <div className="w-12 h-12 rounded-md overflow-hidden shrink-0 border flex-shrink-0">
             <img src={companyLogo} alt={companyName} className="w-full h-full object-cover" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold truncate">{jobTitle}</h3>
+            <h3 className="text-lg font-semibold truncate leading-tight">{jobTitle}</h3>
             <p className="text-sm text-muted-foreground mb-2">{companyName}</p>
-            
-            <div className="flex flex-wrap gap-2 items-center text-sm text-gray-500 mb-3">
-              <div className="flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5" />
-                <span>{location}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Briefcase className="h-3.5 w-3.5" />
-                <span>{employmentType}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <DollarSign className="h-3.5 w-3.5" />
-                <span>{salaryRange}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" />
-                <span>{postedDate}</span>
-              </div>
-            </div>
-            
-            {/* Contenedor con altura fija para los tags */}
-            <div className="h-10 mb-2">
-              {keyRequirements && keyRequirements.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {keyRequirements.map((req, index) => (
-                    <Badge key={index} variant="secondary" className="bg-gray-100 text-gray-700 hover:bg-gray-200">
-                      {req}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         </div>
         
-        <div className="mt-4 pt-4 border-t border-gray-100">
+        <div className="flex flex-wrap gap-3 mb-3">
+          <div className="flex items-center gap-1.5">
+            <MapPin className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm text-gray-500">{location}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Briefcase className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm text-gray-500">{employmentType}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <DollarSign className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm text-gray-500">{salaryRange}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Clock className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm text-gray-500">{postedDate}</span>
+          </div>
+        </div>
+        
+        {/* Contenedor con altura fija para los tags */}
+        <div className="h-16 mb-3 overflow-hidden">
+          {keyRequirements && keyRequirements.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {keyRequirements.map((req, index) => (
+                <Badge 
+                  key={index} 
+                  variant="secondary" 
+                  className="bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs h-6"
+                >
+                  {req}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <div className="mt-auto pt-3 border-t border-gray-100">
           {/* Versión adaptativa de los botones */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
             <Button

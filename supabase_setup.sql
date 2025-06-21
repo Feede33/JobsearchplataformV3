@@ -21,7 +21,7 @@ BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ language 'plpgsql' SECURITY DEFINER SET search_path = public;
 
 -- Trigger para actualizar el campo updated_at
 CREATE TRIGGER update_profiles_updated_at
