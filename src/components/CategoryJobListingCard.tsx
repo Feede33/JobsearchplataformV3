@@ -1,0 +1,639 @@
+import React, { useState, useEffect, useRef } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { MapPin, Briefcase, DollarSign, Clock, Share2, Bookmark, Send, Check, Upload, FileText, Copy, Facebook, Twitter, Linkedin } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { saveJob, unsaveJob, isJobSaved, applyToJob, hasAppliedToJob } from "@/lib/jobInteractions";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { toast } from "@/components/ui/use-toast";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+// Props identical to JobListingCard
+interface CategoryJobListingCardProps {
+  id: string;
+  companyLogo: string;
+  jobTitle: string;
+  companyName: string;
+  location: string;
+  salaryRange: string;
+  employmentType: string;
+  keyRequirements?: string[];
+  postedDate: string;
+  className?: string;
+  onClick?: () => void;
+}
+
+// Special version of JobListingCard with circular share/save buttons for the Category section
+const CategoryJobListingCard = ({
+  id,
+  companyLogo,
+  jobTitle,
+  companyName,
+  location,
+  salaryRange,
+  employmentType,
+  keyRequirements = [],
+  postedDate,
+  className = "",
+  onClick,
+}: CategoryJobListingCardProps) => {
+  const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const [isSaved, setIsSaved] = useState(false);
+  const [isApplied, setIsApplied] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [applyDialogOpen, setApplyDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [coverLetter, setCoverLetter] = useState("");
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  useEffect(() => {
+    const checkInteractions = async () => {
+      if (isAuthenticated && user) {
+        const saved = await isJobSaved(user.id, id);
+        setIsSaved(saved);
+        
+        const applied = await hasAppliedToJob(user.id, id);
+        setIsApplied(applied);
+      }
+    };
+    
+    checkInteractions();
+  }, [isAuthenticated, user, id]);
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Tipo de archivo no permitido",
+          description: "Por favor, sube un archivo PDF, DOC o DOCX",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const maxSize = 5 * 1024 * 1024; // 5MB en bytes
+      if (file.size > maxSize) {
+        toast({
+          title: "Archivo demasiado grande",
+          description: "El tamaño máximo permitido es 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setResumeFile(file);
+      toast({
+        title: "Archivo seleccionado",
+        description: file.name,
+      });
+    }
+  };
+  
+  const handleSaveJob = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!isAuthenticated) {
+      navigate("/auth", { state: { returnUrl: window.location.pathname, action: "save-job", jobId: id } });
+      return;
+    }
+    
+    if (!user) return;
+    
+    setIsLoading(true);
+    
+    try {
+      if (!isSaved) {
+        const jobData = {
+          id,
+          jobTitle,
+          companyName,
+          companyLogo,
+          location,
+          salary: salaryRange,
+          employmentType,
+          postedDate
+        };
+        
+        const { success, error } = await saveJob(user.id, id, jobData);
+        
+        if (success) {
+          setIsSaved(true);
+          toast({
+            title: "Trabajo guardado",
+            description: "El trabajo ha sido añadido a tus favoritos",
+          });
+        } else if (error) {
+          toast({
+            title: "Error",
+            description: error,
+            variant: "destructive",
+          });
+        }
+      } else {
+        const { success, error } = await unsaveJob(user.id, id);
+        
+        if (success) {
+          setIsSaved(false);
+          toast({
+            title: "Trabajo eliminado",
+            description: "El trabajo ha sido eliminado de tus favoritos",
+          });
+        } else if (error) {
+          toast({
+            title: "Error",
+            description: error,
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error al guardar/eliminar trabajo:", error);
+      toast({
+        title: "Error",
+        description: "Ha ocurrido un error. Por favor, inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const openApplyDialog = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!isAuthenticated) {
+      navigate("/auth", { state: { returnUrl: window.location.pathname, action: "apply-job", jobId: id } });
+      return;
+    }
+    
+    if (!user) return;
+    setApplyDialogOpen(true);
+  };
+  
+  const handleApply = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    
+    try {
+      const jobData = {
+        jobTitle,
+        companyName,
+        companyLogo,
+        location,
+        salary: salaryRange,
+        employmentType,
+        id
+      };
+      
+      const { success, error, isUpdate } = await applyToJob(user.id, id, {
+        coverLetter,
+        resumeFile: resumeFile || undefined,
+        jobData,
+        forceUpdate: isApplied
+      });
+      
+      if (success) {
+        setIsApplied(true);
+        setApplyDialogOpen(false);
+        setCoverLetter("");
+        setResumeFile(null);
+        
+        if (isUpdate) {
+          toast({
+            title: "Aplicación actualizada",
+            description: "Has actualizado correctamente tu aplicación a este trabajo",
+          });
+        } else {
+          toast({
+            title: "Aplicación enviada",
+            description: "Tu aplicación ha sido enviada correctamente",
+          });
+        }
+      } else if (error) {
+        toast({
+          title: "Error",
+          description: error,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error al aplicar al trabajo:", error);
+      toast({
+        title: "Error",
+        description: "Ha ocurrido un error al enviar tu aplicación. Por favor, inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShareOpen(true);
+  };
+  
+  const copyToClipboard = () => {
+    const jobUrl = `${window.location.origin}/search-results?jobId=${id}`;
+    navigator.clipboard.writeText(jobUrl);
+    toast({
+      title: "Enlace copiado",
+      description: "El enlace ha sido copiado al portapapeles",
+    });
+    setTimeout(() => setShareOpen(false), 1000);
+  };
+  
+  const shareOnSocialMedia = (platform: string) => {
+    const jobUrl = `${window.location.origin}/search-results?jobId=${id}`;
+    let shareUrl = "";
+    
+    switch (platform) {
+      case "facebook":
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(jobUrl)}`;
+        break;
+      case "twitter":
+        shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`¡He encontrado este trabajo de ${jobTitle} en ${companyName}!`)}&url=${encodeURIComponent(jobUrl)}`;
+        break;
+      case "linkedin":
+        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(jobUrl)}`;
+        break;
+      case "whatsapp":
+        shareUrl = `https://wa.me/?text=${encodeURIComponent(`¡He encontrado este trabajo de ${jobTitle} en ${companyName}! ${jobUrl}`)}`;
+        break;
+      default:
+        return;
+    }
+    
+    window.open(shareUrl, "_blank", "noopener,noreferrer");
+    setTimeout(() => setShareOpen(false), 1000);
+  };
+
+  const handleCardClick = () => {
+    if (onClick) {
+      onClick();
+      return;
+    }
+    
+    navigate(`/search-results?jobId=${id}`, {
+      state: { jobId: id }
+    });
+  };
+
+  return (
+    <Card className={`cursor-pointer h-full min-h-[350px] overflow-hidden border-gray-200 hover:border-gray-300 hover:shadow-md transition-all ${className}`} onClick={handleCardClick}>
+      <CardContent className="p-6 flex flex-col h-full relative">
+        <div className="flex gap-4 items-start mb-4">
+          <div className="w-14 h-14 rounded-md overflow-hidden shrink-0 border flex-shrink-0">
+            <img src={companyLogo} alt={companyName} className="w-full h-full object-cover" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-xl font-semibold truncate leading-tight">{jobTitle}</h3>
+            <p className="text-sm text-muted-foreground mb-2">{companyName}</p>
+          </div>
+        </div>
+        
+        <div className="flex flex-wrap gap-3 mb-4">
+          <div className="flex items-center gap-1.5">
+            <MapPin className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm text-gray-500">{location}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Briefcase className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm text-gray-500">{employmentType}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <DollarSign className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm text-gray-500">{salaryRange}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Clock className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm text-gray-500">{postedDate}</span>
+          </div>
+        </div>
+        
+        {/* Contenedor con altura fija para los tags - increased height */}
+        <div className="h-20 mb-4 overflow-hidden">
+          {keyRequirements && keyRequirements.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {keyRequirements.map((req, index) => (
+                <Badge 
+                  key={index} 
+                  variant="secondary" 
+                  className="bg-gray-100 text-gray-700 hover:bg-gray-200 text-xs h-6"
+                >
+                  {req}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <div className="mt-auto pt-4 border-t border-gray-100">
+          {/* Versión modificada con botones circulares para compartir y guardar */}
+          <div className="flex justify-between items-center gap-2">
+            <div className="flex items-center gap-3">
+              {/* Botón circular para compartir - TAMAÑO REDUCIDO */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="rounded-full w-9 h-9 flex items-center justify-center border hover:bg-gray-100 transition-colors"
+                      onClick={handleShare}
+                    >
+                      {/* Ícono REDUCIDO de compartir */}
+                      <Share2 className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Compartir</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              {/* Botón circular para guardar - TAMAÑO REDUCIDO */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className={`rounded-full w-9 h-9 flex items-center justify-center border hover:bg-gray-100 transition-colors ${
+                        isSaved ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100' : ''
+                      }`}
+                      onClick={handleSaveJob}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <span className="animate-spin">
+                          {/* Ícono REDUCIDO de carga */}
+                          <svg className="h-4 w-4" viewBox="0 0 24 24">
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                        </span>
+                      ) : (
+                        /* Ícono REDUCIDO de guardar */
+                        <Bookmark className={`h-4 w-4 ${isSaved ? 'fill-blue-600' : ''}`} />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{isSaved ? 'Guardado' : 'Guardar'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            
+            {/* Botón de aplicar (se mantiene igual pero un poco más grande) */}
+            <Button
+              variant={isApplied ? "outline" : "default"}
+              size="sm"
+              className={`${isApplied ? "text-green-600 border-green-300 hover:bg-green-50" : ""}`}
+              onClick={openApplyDialog}
+            >
+              {isApplied ? (
+                <>
+                  <FileText className="h-3 w-3 mr-1" />
+                  <span className="hidden sm:inline">Actualizar CV</span>
+                  <span className="inline sm:hidden">Actualizar</span>
+                </>
+              ) : (
+                <>
+                  <Send className="h-3 w-3 mr-1" />
+                  <span className="hidden sm:inline">Aplicar</span>
+                  <span className="inline sm:hidden">Aplicar</span>
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+      
+      {/* Dialog para compartir */}
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>Compartir este trabajo</DialogTitle>
+            <DialogDescription>
+              <div className="mt-2 mb-2 p-2 bg-gray-100 border border-gray-200 rounded-md text-gray-700 cursor-pointer" onClick={copyToClipboard}>
+                <Copy className="inline-block mr-1 h-4 w-4" />
+                <span>Copiar enlace</span>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="shareUrl">Enlace</Label>
+              <Input
+                id="shareUrl"
+                type="text"
+                value={`${window.location.origin}/search-results?jobId=${id}`}
+                readOnly
+                disabled={true}
+                className="min-h-[40px]"
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="sharePlatform">Red social</Label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                  >
+                    Seleccionar plataforma
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuItem onClick={() => shareOnSocialMedia("facebook")}>
+                    <Facebook className="mr-2 h-4 w-4" />
+                    <span>Facebook</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => shareOnSocialMedia("twitter")}>
+                    <Twitter className="mr-2 h-4 w-4" />
+                    <span>Twitter</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => shareOnSocialMedia("linkedin")}>
+                    <Linkedin className="mr-2 h-4 w-4" />
+                    <span>LinkedIn</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => shareOnSocialMedia("whatsapp")}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-4 w-4">
+                      <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"></path>
+                    </svg>
+                    <span>WhatsApp</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+          
+          <DialogFooter className="sm:justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShareOpen(false)}
+              disabled={isLoading}
+            >
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog para aplicar */}
+      <Dialog open={applyDialogOpen} onOpenChange={setApplyDialogOpen}>
+        <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>{isApplied ? "Actualizar aplicación" : "Aplicar a"} {jobTitle}</DialogTitle>
+            <DialogDescription>
+              {isApplied ? (
+                <div className="mt-2 mb-2 p-2 bg-green-50 border border-green-200 rounded-md text-green-700">
+                  <Check className="inline-block mr-1 h-4 w-4" />
+                  Ya has aplicado a este trabajo anteriormente. Puedes actualizar tu solicitud con un nuevo CV o carta de presentación.
+                </div>
+              ) : (
+                <>Completa el formulario para enviar tu aplicación a {companyName}.</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="coverLetter">Carta de presentación</Label>
+              <Textarea
+                id="coverLetter"
+                placeholder="Escribe una breve presentación..."
+                className="min-h-[120px]"
+                value={coverLetter}
+                onChange={(e) => setCoverLetter(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="resume">CV / Curriculum</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="resume"
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  disabled={isLoading}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading}
+                  className="flex-1"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {resumeFile ? resumeFile.name : "Subir CV"}
+                </Button>
+                {resumeFile && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setResumeFile(null)}
+                    disabled={isLoading}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                      <path d="M18 6 6 18"></path>
+                      <path d="m6 6 12 12"></path>
+                    </svg>
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Formatos aceptados: PDF, DOC, DOCX. Tamaño máximo: 5MB.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter className="sm:justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setApplyDialogOpen(false)}
+              disabled={isLoading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleApply}
+              disabled={isLoading || (!resumeFile && !isApplied)}
+            >
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Enviando...
+                </>
+              ) : isApplied ? (
+                <>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Actualizar aplicación
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Enviar aplicación
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+};
+
+export default CategoryJobListingCard; 

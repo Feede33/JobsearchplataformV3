@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getPersonalizedJobRecommendations, getFeaturedJobs } from "@/lib/jobRecommendations";
 import { useAuth } from "@/contexts/AuthContext";
-import JobListingCard from "./JobListingCard";
+import PersonalizedJobListingCard from "./PersonalizedJobListingCard";
 import { Skeleton } from "./ui/skeleton";
 import { Button } from "./ui/button";
 import { ArrowRight, Sparkles, Briefcase, LightbulbIcon } from "lucide-react";
@@ -115,24 +115,39 @@ const PersonalizedJobsSection = ({
           </div>
           <div className="h-5 w-96 bg-blue-100 animate-pulse rounded mb-8"></div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array(limit).fill(0).map((_, i) => (
-              <div key={i} className="border rounded-lg p-4 bg-white shadow-sm">
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="h-12 w-12 rounded-md bg-gray-200 animate-pulse"></div>
+              <div key={i} className="border rounded-lg p-6 bg-white shadow-sm min-h-[350px]">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="h-14 w-14 rounded-md bg-gray-200 animate-pulse"></div>
                   <div className="space-y-2 flex-1">
-                    <div className="h-5 w-4/5 bg-gray-200 animate-pulse rounded"></div>
+                    <div className="h-6 w-4/5 bg-gray-200 animate-pulse rounded"></div>
                     <div className="h-4 w-3/5 bg-gray-200 animate-pulse rounded"></div>
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="h-4 w-full bg-gray-200 animate-pulse rounded"></div>
                   <div className="h-4 w-full bg-gray-200 animate-pulse rounded"></div>
                   <div className="h-4 w-2/3 bg-gray-200 animate-pulse rounded"></div>
                 </div>
-                <div className="mt-4 flex justify-between">
-                  <div className="h-8 w-24 bg-gray-200 animate-pulse rounded"></div>
-                  <div className="h-8 w-24 bg-gray-200 animate-pulse rounded"></div>
+                <div className="h-20 my-4">
+                  <div className="flex flex-wrap gap-2">
+                    <div className="h-6 w-16 bg-gray-200 animate-pulse rounded"></div>
+                    <div className="h-6 w-20 bg-gray-200 animate-pulse rounded"></div>
+                    <div className="h-6 w-18 bg-gray-200 animate-pulse rounded"></div>
+                    <div className="h-6 w-14 bg-gray-200 animate-pulse rounded"></div>
+                  </div>
+                </div>
+                <div className="mt-auto pt-4 border-t border-gray-100">
+                  <div className="flex justify-between">
+                    <div className="flex gap-3">
+                      {/* Esqueleto para botón circular REDUCIDO de compartir */}
+                      <div className="h-9 w-9 rounded-full bg-gray-200 animate-pulse"></div>
+                      {/* Esqueleto para botón circular REDUCIDO de guardar */}
+                      <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>
+                    </div>
+                    <div className="h-10 w-24 bg-gray-200 animate-pulse rounded"></div>
+                  </div>
                 </div>
               </div>
             ))}
@@ -148,12 +163,16 @@ const PersonalizedJobsSection = ({
       <div className="py-12 px-4 bg-blue-50">
         <div className="container mx-auto max-w-6xl">
           <div className="p-8 bg-white rounded-lg shadow-sm text-center">
-            <LightbulbIcon className="h-12 w-12 mx-auto mb-4 text-yellow-400" />
-            <h3 className="text-xl font-semibold mb-2">No hay ofertas disponibles en este momento</h3>
+            <LightbulbIcon className="h-14 w-14 mx-auto mb-6 text-yellow-400" />
+            <h3 className="text-xl font-semibold mb-3">No hay ofertas disponibles en este momento</h3>
             <p className="text-muted-foreground mb-6">
               Estamos actualizando nuestro catálogo de empleos. Por favor, vuelve más tarde para encontrar nuevas oportunidades.
             </p>
-            <Button onClick={() => navigate("/search-results")}>
+            <Button 
+              onClick={() => navigate("/search-results")}
+              size="lg"
+              className="px-8"
+            >
               Explorar todas las ofertas
             </Button>
           </div>
@@ -202,7 +221,7 @@ const PersonalizedJobsSection = ({
         </div>
         
         <motion.div 
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -218,7 +237,7 @@ const PersonalizedJobsSection = ({
                 boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)"
               }}
             >
-              <JobListingCard 
+              <PersonalizedJobListingCard 
                 id={job.id}
                 companyLogo={job.logo || `https://api.dicebear.com/7.x/initials/svg?seed=${job.company || 'Company'}`}
                 jobTitle={job.title}

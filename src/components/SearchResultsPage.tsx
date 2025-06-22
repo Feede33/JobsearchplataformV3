@@ -491,6 +491,26 @@ const SearchResultsPage = () => {
   const [salaryRange, setSalaryRange] = useState([0, 150000]);
   const [showFilters, setShowFilters] = useState(false);
   const [filteredJobs, setFilteredJobs] = useState(mockJobs);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [mobileSearchTerm, setMobileSearchTerm] = useState(searchTermFromState || "");
+  
+  // Efecto para sincronizar los términos de búsqueda
+  useEffect(() => {
+    // Solo actualizamos si el diálogo no está abierto para evitar ciclos
+    if (!mobileSearchOpen) {
+      setMobileSearchTerm(searchTerm);
+    }
+  }, [searchTerm, mobileSearchOpen]);
+
+  // Inicializar filtros si viene un JobId específico
+  useEffect(() => {
+    if (jobId) {
+      const job = mockJobs.find(job => job.id.toString() === jobId);
+      if (job) {
+        setMobileSearchTerm(job.title); // También establecer el término de búsqueda móvil
+      }
+    }
+  }, [jobId]);
   
   // Seleccionar el primer trabajo por defecto, o buscar el trabajo específico si hay jobId
   const getInitialSelectedJob = () => {
@@ -941,23 +961,94 @@ const SearchResultsPage = () => {
     }
   };
 
+  // Función para realizar búsqueda
+  const performSearch = (term: string) => {
+    let filtered = [...mockJobs];
+    
+    if (term) {
+      filtered = filtered.filter(
+        (job) =>
+          job.title.toLowerCase().includes(term.toLowerCase()) ||
+          job.company.toLowerCase().includes(term.toLowerCase()) ||
+          job.requirements.some((req) =>
+            req.toLowerCase().includes(term.toLowerCase())
+          )
+      );
+    }
+    
+    setFilteredJobs(filtered);
+    setCurrentPage(1); // Volver a la primera página al buscar
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="border-b bg-white shadow-sm">
+      <header className="border-b bg-white shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 mr-2">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate("/")}
-                className="flex items-center gap-2"
+                className="flex items-center gap-1"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Volver
+                <span className="hidden sm:inline">Volver</span>
               </Button>
-              <h1 className="text-xl font-bold text-primary">JobSearch</h1>
+              <h1 className="text-lg font-bold text-primary">JobSearch</h1>
+            </div>
+            
+            {/* Barra de búsqueda en el nav */}
+            <div className="flex items-center gap-2 order-3 w-full md:w-auto md:max-w-md md:order-2 mt-1 md:mt-0 md:ml-4 md:flex-grow">
+              <div className="relative flex-grow w-full hidden sm:block">
+                <Input
+                  type="text"
+                  placeholder="Buscar..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      performSearch(searchTerm);
+                    }
+                  }}
+                  className="pl-3 pr-14 h-9 rounded-full text-sm"
+                />
+                <div className="absolute right-8 top-0 h-full flex items-center pointer-events-none">
+                  <span className="text-blue-500 text-xl font-bold">|</span>
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="default" 
+                  className="absolute right-0 top-0 h-full rounded-r-full px-3 min-w-[40px]"
+                  onClick={() => performSearch(searchTerm)}
+                >
+                  <Search className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              
+              {/* Botón de búsqueda móvil */}
+              <Button 
+                variant="outline" 
+                size="icon"
+                className="sm:hidden flex-grow"
+                onClick={() => setMobileSearchOpen(true)}
+              >
+                <Search className="h-4 w-4 mr-1" />
+                <span className="text-xs">Buscar</span>
+              </Button>
+            </div>
+            
+            <div className="flex items-center order-2 md:order-3 ml-auto">
+              <Button 
+                variant="default" 
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                className="whitespace-nowrap bg-blue-600 hover:bg-blue-700"
+              >
+                <Filter className="h-4 w-4 mr-0 sm:mr-2" />
+                <span className="hidden sm:inline">{showFilters ? "Ocultar filtros" : "Mostrar filtros"}</span>
+              </Button>
             </div>
           </div>
         </div>
@@ -984,21 +1075,6 @@ const SearchResultsPage = () => {
                 </div>
 
                 <div className="space-y-5">
-                  {/* Search term */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Búsqueda</label>
-                    <div className="relative">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                      <Input
-                        type="text"
-                        placeholder="Título, empresa..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-8"
-                      />
-                    </div>
-                  </div>
-
                   {/* Location */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Ubicación</label>
@@ -1093,17 +1169,6 @@ const SearchResultsPage = () => {
                   </span>
                 )}
               </p>
-              
-              {/* Botón de filtros debajo del contador de resultados */}
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                className="w-full mb-4 flex items-center justify-center gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                {showFilters ? "Ocultar filtros" : "Mostrar filtros"}
-              </Button>
             </div>
 
             <div>
@@ -1733,6 +1798,74 @@ const SearchResultsPage = () => {
               onClick={() => setShareDialogOpen(false)}
             >
               Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de búsqueda para móvil */}
+      <Dialog open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Buscar trabajos</DialogTitle>
+            <DialogDescription>
+              Ingresa términos para encontrar trabajos
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="relative">
+              <Input
+                autoFocus
+                type="text"
+                placeholder="Título, empresa, habilidades..."
+                value={mobileSearchTerm}
+                onChange={(e) => setMobileSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setSearchTerm(mobileSearchTerm);
+                    performSearch(mobileSearchTerm);
+                    setMobileSearchOpen(false);
+                  }
+                }}
+                className="pr-14"
+              />
+              <div className="absolute right-8 top-0 h-full flex items-center pointer-events-none">
+                <span className="text-blue-500 text-xl font-bold">|</span>
+              </div>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                className="absolute right-0 top-0 h-full rounded-r-md min-w-[40px]"
+                onClick={() => {
+                  setSearchTerm(mobileSearchTerm);
+                  performSearch(mobileSearchTerm);
+                  setMobileSearchOpen(false);
+                }}
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setMobileSearchOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setSearchTerm(mobileSearchTerm);
+                performSearch(mobileSearchTerm);
+                setMobileSearchOpen(false);
+              }}
+            >
+              Buscar
             </Button>
           </DialogFooter>
         </DialogContent>

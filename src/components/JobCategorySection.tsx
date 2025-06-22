@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, FolderKanban, AlertCircle } from "lucide-react";
 import JobListingCard from "./JobListingCard";
+import CategoryJobListingCard from "./CategoryJobListingCard";
 import { getFeaturedJobsByCategory } from "@/lib/jobRecommendations";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -92,8 +93,8 @@ const JobCategorySection = ({
       return "grid grid-cols-1 md:grid-cols-2 gap-6";
     }
     
-    // Layout por defecto
-    return "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4";
+    // Layout por defecto - updated to match PersonalizedJobs section
+    return "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6";
   };
 
   // Variantes para animaciones
@@ -208,19 +209,29 @@ const JobCategorySection = ({
             {Array(limit)
               .fill(0)
               .map((_, i) => (
-                <Card key={i} className="w-full h-[220px] animate-pulse">
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="h-11 w-11 rounded-md bg-muted"></div>
+                <Card key={i} className="w-full min-h-[350px] animate-pulse">
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="h-14 w-14 rounded-md bg-muted"></div>
                       <div className="space-y-2">
-                        <div className="h-4 w-32 bg-muted rounded"></div>
-                        <div className="h-3 w-24 bg-muted rounded"></div>
+                        <div className="h-6 w-32 bg-muted rounded"></div>
+                        <div className="h-4 w-24 bg-muted rounded"></div>
                       </div>
                     </div>
-                    <div className="mt-4 space-y-2">
-                      <div className="h-3 w-full bg-muted rounded"></div>
-                      <div className="h-3 w-full bg-muted rounded"></div>
-                      <div className="h-3 w-3/4 bg-muted rounded"></div>
+                    <div className="mt-4 space-y-3">
+                      <div className="h-4 w-full bg-muted rounded"></div>
+                      <div className="h-4 w-full bg-muted rounded"></div>
+                      <div className="h-4 w-3/4 bg-muted rounded"></div>
+                    </div>
+                    <div className="h-20 my-4 bg-muted opacity-10 rounded"></div>
+                    <div className="mt-auto pt-4 border-t border-gray-100">
+                      <div className="flex justify-between">
+                        <div className="flex gap-3">
+                          <div className="h-8 w-8 rounded-full bg-muted"></div>
+                          <div className="h-8 w-8 rounded-full bg-muted"></div>
+                        </div>
+                        <div className="h-10 w-24 bg-muted rounded"></div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -260,7 +271,7 @@ const JobCategorySection = ({
                     delay: index * 0.05
                   }}
                 >
-                  <JobListingCard
+                  <CategoryJobListingCard
                     id={job.id}
                     jobTitle={job.title}
                     companyName={job.company}
@@ -271,7 +282,7 @@ const JobCategorySection = ({
                     keyRequirements={job.requirements}
                     postedDate={job.posted}
                     onClick={() => handleJobClick(job)}
-                    className="h-full flex flex-col hover:shadow-md transition-shadow duration-300"
+                    className="h-full"
                   />
                 </motion.div>
               ))}
@@ -294,7 +305,7 @@ const JobCategorySection = ({
                   delay: index * 0.05
                 }}
               >
-                <JobListingCard
+                <CategoryJobListingCard
                   id={job.id}
                   jobTitle={job.title}
                   companyName={job.company}
@@ -305,7 +316,7 @@ const JobCategorySection = ({
                   keyRequirements={job.requirements || []}
                   postedDate={job.posted || "Reciente"}
                   onClick={() => handleJobClick(job)}
-                  className="h-full flex flex-col hover:shadow-md transition-shadow duration-300"
+                  className="h-full"
                 />
               </motion.div>
             ))}
